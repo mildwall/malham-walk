@@ -171,6 +171,7 @@ ol,ul{padding-left:1.2em;margin:.4em 0}
     <div class="tile"><div class="k">Distance left</div><div class="v" id="dLeft">–</div><div class="s" id="dLeftS"></div></div>
     <div class="tile"><div class="k">Daylight left</div><div class="v" id="sunLeft">–</div><div class="s" id="sunS"></div></div>
     <div class="tile"><div class="k">Walking</div><div class="v" id="elapsed">–</div><div class="s" id="paceS"></div></div>
+    <div class="tile wide"><div class="k">Stops</div><div class="v" id="stopV">–</div><div class="s" id="stopS"></div></div>
   </div>
 
   <div class="mapwrap">
@@ -225,6 +226,8 @@ ol,ul{padding-left:1.2em;margin:.4em 0}
     <h2>Settings</h2>
     <label for="speed">Walking speed on the flat <b id="speedV"></b></label>
     <input type="range" id="speed" min="2.5" max="5.5" step="0.1" value="4" style="width:100%">
+    <label for="stopPlan">Stops I expect per hour of walking <b id="stopPlanV"></b></label>
+    <input type="range" id="stopPlan" min="0" max="40" step="5" value="15" style="width:100%">
     <label for="useMine"><span>Use my measured pace once I have walked 10 minutes</span><input type="checkbox" id="useMine" checked></label>
     <label for="vib"><span>Vibrate when I go off route or risk missing the bus</span><input type="checkbox" id="vib" checked></label>
     <div class="small" style="margin:6px 0 4px">Colours</div>
@@ -252,6 +255,7 @@ ol,ul{padding-left:1.2em;margin:.4em 0}
         <li>Tap Start GPS and allow location, then use ⋮ → Add to Home screen in Chrome.</li>
         <li>Phone GPS works without signal. Turn on Location and set it to high accuracy. Airplane mode with location on saves battery.</li>
         <li>Tap <b>Start walk</b> when you get off the bus. Times then use your real pace, including stops.</li>
+        <li>Stops are counted from GPS: staying in one spot for about a minute, or GPS pausing while you barely moved. Your stops replace the setting in Settings over the first hour of walking.</li>
         <li>The page remembers your start time and track if the browser is closed. Save your track as GPX at the end if you want to keep it.</li>
         <li>The GPX route can also go into another app (OS Maps, Komoot, Gaia) as a backup.</li>
         <li>3D: tap <b>3D</b> on the map. Drag to turn, pinch to zoom, two fingers to move. <b>Fly the route</b> plays a tour.</li>
@@ -500,7 +504,7 @@ const fmtRef = (lat, lon) => CFG.gridRef === "osgb" ? osGrid(lat, lon) : `${lat.
 
 // ---- state ----------------------------------------------------------------
 const KEY = CFG.storageKey;   // file:// pages can share storage, so each page needs its own key
-let S = { route: CFG.routes[0].key, busPick: null, start: null, lastS: 0, track: [], speed: 4, useMine: true, base: "topo", theme: "auto", vibrate: true, wake: false, exag: 1.5 };
+let S = { route: CFG.routes[0].key, busPick: null, stops: [], anchor: null, stopsV: 0, stopPlan: 15, kMove: null, start: null, lastS: 0, track: [], speed: 4, useMine: true, base: "topo", theme: "auto", vibrate: true, wake: false, exag: 1.5 };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
 if (!ROUTES[S.route]) S.route = CFG.routes[0].key;
 // Saving every GPS fix wears the battery; write at most every 20 s, and always when the page is hidden.
@@ -552,7 +556,7 @@ function snap(route, x, y, lastS) {
     const s = a.d + f * (b.d - a.d);
     // prefer positions just behind or ahead of where we were (route overlaps itself)
     const jump = s < lastS - 400 ? (lastS - 400 - s) : s > lastS + 1500 ? (s - lastS - 1500) : 0;
-    const cost = off + Math.min(jump, 3000) * 0.25;
+    const cost = off + Math.min(jump, 3000) * 0.25 + (s < lastS ? (lastS - s) * 0.05 : Math.max(0, s - lastS - 120) * 0.01);
     if (!best || cost < best.cost) best = { cost, s, i, f, off, x: px, y: py };
   }
   return best;
@@ -635,10 +639,72 @@ function bearing(lat1, lon1, lat2, lon2) {
 }
 const compass = b => ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(b / 45) % 8];
 
+// ---- stops ----------------------------------------------------------------
+// A stop is time spent near one spot. Phones pause GPS while the screen is off or the camera is
+// open, so the time between two fixes is split: walking time for the ground covered, and the rest
+// is stopping. A short stop can only be told from slow walking by how long it lasts in the radius.
+const STOP_CAP = 900;   // a long lunch is a one-off: forecast from at most 15 minutes of any one stop
+const stopRadius = acc => Math.max(20, Math.min(45, acc * 1.2));
+const stopMin = acc => stopRadius(acc) / 0.45;   // walking pace slower than 0.45 m/s counts as stopped
+function noteStop(t0, dur, s) {
+  const L = S.stops[S.stops.length - 1];
+  if (L && t0 - (L.t0 + L.dur * 1000) < 120000) L.dur = (t0 + dur * 1000 - L.t0) / 1000;   // a GPS jump split one stop in two
+  else S.stops.push({ t0, dur, s });
+}
+function trackStop(x, y, t, acc, q, T) {
+  const a = S.anchor, b = q && q.off < 80 ? lerp(T.F[q.i], T.F[q.i + 1] ?? T.F[T.F.length - 1], q.f) : null;
+  const here = { x, y, cx: x, cy: y, n: 1, t, last: t, b, bNow: b, s: q ? q.s : 0, out: 0 };
+  if (!a) { S.anchor = here; return; }
+  const gap = t - a.last;
+  a.last = t; a.bNow = b;
+  if (Math.hypot(x - a.cx, y - a.cy) <= stopRadius(acc)) {   // still here: average the spot so jitter can't drag it
+    a.n++; a.cx += (x - a.cx) / a.n; a.cy += (y - a.cy) / a.n; a.out = 0;
+    return;
+  }
+  if (++a.out < 2 && gap < 20000) return;   // one stray fix is jitter; leaving takes two, or one after a GPS gap
+  const flat = Math.hypot(x - a.x, y - a.y) / (S.speed / 3.6);
+  const walk = Math.max(flat, b != null && a.b != null ? Math.abs(b - a.b) : 0) * (S.kMove || 1);
+  const idle = (t - a.t) / 1000 - walk;
+  // Across a long GPS gap the pace is unknown, so allow for walking a quarter slower than expected.
+  if (idle >= Math.max(stopMin(acc), gap > 60000 ? walk * 0.25 : 0)) noteStop(a.t, idle, a.s);
+  S.anchor = here;
+}
+function stopNow() {   // seconds stopped at the current spot, once that counts as a stop
+  const a = S.anchor;
+  if (!S.start || !a || !fix) return 0;
+  const t = Date.now() - fix.t < 60000 ? Date.now() : fix.t;   // an old fix says nothing about now
+  const walk = a.b != null && a.bNow != null ? Math.abs(a.bNow - a.b) * (S.kMove || 1) : 0;
+  const dur = (t - a.t) / 1000 - walk;
+  return dur >= stopMin(fix.acc) ? dur : 0;
+}
+function stopTotals() {
+  const now = stopNow();
+  let stopped = now, capped = Math.min(now, STOP_CAP);
+  for (const q of S.stops) { stopped += q.dur; capped += Math.min(q.dur, STOP_CAP); }
+  return { now, stopped, capped, count: S.stops.length + (now ? 1 : 0), moving: S.start ? Math.max(0, (Date.now() - S.start) / 1000 - stopped) : 0 };
+}
+// Stop seconds per walking second to expect from here on: your setting at first, then your own stops.
+function stopRate(st) {
+  const plan = S.stopPlan / 60;
+  if (!S.start || !S.useMine) return plan;
+  const w = Math.min(1, st.moving / 3600), seen = st.moving > 300 ? st.capped / st.moving : plan;
+  return Math.min(1, plan * (1 - w) + seen * w);
+}
+// A walk begun before stops were tracked: read them back from the recorded track.
+function replayStops() {
+  S.stops = []; S.anchor = null; S.stopsV = 1;
+  const r = ROUTES[S.route], T = times(r); let s = 0;
+  for (const q of S.track) {
+    const [x, y] = toXY(q[0], q[1]), h = snap(r, x, y, s);
+    if (h.off < 80) s = h.s;
+    trackStop(x, y, q[2] * 1000, 20, h, T);
+  }
+}
+
 // ---- core calc --------------------------------------------------------------
 function paceFactor(route, T) {
   if (!S.useMine || !S.start || !snapR) return { k: 1, measured: null };
-  const el = (Date.now() - S.start) / 1000;
+  const el = stopTotals().moving;   // walking only: stops are forecast on their own
   const book = lerp(T.F[snapR.i], T.F[snapR.i + 1], snapR.f);
   if (el < 600 || snapR.s < 400 || book < 300) return { k: 1, measured: null };
   const k = Math.max(0.6, Math.min(1.6, el / book));
@@ -657,7 +723,9 @@ function compute() {
   const climbAhead = climbBetween(p, pos.i, pos.f, last - 1, 1, false);
   const ret = quickestReturn(route, T, pos, fAt, rAt);
   lastRet = ret;
-  return { route, T, k, measured, pos, ahead, total, fAt, distLeft: total - pos.s + pos.off, climbAhead,
+  const st = stopTotals(), rate = stopRate(st);
+  if (measured) S.kMove = measured;
+  return { route, T, k, measured, st, rate, stopsAhead: ahead * rate, pos, ahead, total, fAt, distLeft: total - pos.s + pos.off, climbAhead,
            back: ret.t * Math.min(k, 1.3) + offT, backDist: ret.d + pos.off, backClimb: ret.c, retWay: ret };
 }
 
@@ -741,7 +809,7 @@ function busPlan(c, now) {
   const buf = BUS.bufferMin * 6e4;
   const rows = day.dep.map(x => {
     const dep = hmDate(x, now).getTime(), deadline = dep - buf;
-    return { t: x, dep, deadline, gone: dep <= now.getTime(), spareLoop: (deadline - t0) / 1000 - c.ahead, spareBack: (deadline - t0) / 1000 - c.back, reach: (dep - 12e4 - t0) / 1000 - c.back };
+    return { t: x, dep, deadline, gone: dep <= now.getTime(), spareWalk: (deadline - t0) / 1000 - c.ahead, spareLoop: (deadline - t0) / 1000 - c.ahead - c.stopsAhead, spareBack: (deadline - t0) / 1000 - c.back, reach: (dep - 12e4 - t0) / 1000 - c.back };
   });
   const live = rows.filter(r => !r.gone), picked = live.find(r => r.t === S.busPick) || null;
   // A bus you chose stays the target. Otherwise take the first bus you can still reach: walking
@@ -764,16 +832,19 @@ function renderBus(c) {
     $("busHead").textContent = `${t.t} ${b.day.label} to ${BUS.to}${lastBus ? " · last bus" : ""}`;
     if (t.spareLoop >= 1800) { big = fmtDur(t.spareLoop) + " spare"; how = `On track. Be at the stop by ${by}.`; }
     else if (t.spareLoop >= 0) { level = "warn"; big = fmtDur(t.spareLoop) + " spare"; how = `Tight. Keep stops short and be at the stop by ${by}.`; }
+    else if (t.spareWalk >= 0) { level = "warn"; big = fmtDur(t.spareWalk) + " spare"; how = `Only with fewer stops than usual. Be at the stop by ${by}.`; }
     else if (t.spareBack >= 0) { level = "warn"; big = "Cut it short"; how = `No time to finish this route. Turn back by ${latest}.`; }
     else if (t.reach >= 0) { level = "bad"; big = "Go now"; how = `Head straight to the stop. You'd get there about ${fmtClock(new Date(b.t0 + c.back * 1000))}, just before the bus.`; }
     else { level = "bad"; big = "Too late"; how = lastBus ? "You can't reach the last bus at this pace." : `You can't reach this bus. Next: ${later.t}.`; }
-    const finish = fmtClock(new Date(b.t0 + c.ahead * 1000));
-    turn = b.arrives ? `Bus gets in ${fmtClock(b.arrives)}. Walking ${fmtDur(c.ahead)}, so done about ${finish} without stops.`
-      : snapR && c.back > 60 && t.spareBack >= 0 ? `Finish about ${finish}. Leave for the stop by ${latest} at the very latest.` : `Finish about ${finish}.`;
+    const finish = fmtClock(new Date(b.t0 + (c.ahead + c.stopsAhead) * 1000)), plan = `Walking ${fmtDur(c.ahead)} + stops ${fmtDur(c.stopsAhead)}`;
+    turn = b.arrives ? `Bus gets in ${fmtClock(b.arrives)}. ${plan}, so done about ${finish}.`
+      : snapR && c.back > 60 && t.spareBack >= 0 ? `${plan}: finish about ${finish}. Leave for the stop by ${latest} at the very latest.` : `${plan}: finish about ${finish}.`;
     if (S.start && c.back > 60) {
       if (t.reach < 0) A.push(["bad", `You won't reach the ${t.t} bus at this pace.${later ? ` Next: ${later.t}.` : " It's the last bus today."}`, "bus-miss"]);
       else if (t.spareBack < 600) A.push(["bad", `Go to the stop now for the ${t.t} bus.`, "bus-now"]);
-      else if (t.spareLoop < 0) A.push(["bad", `You can't finish this route before the ${t.t} bus. Turn back by ${latest}.${later ? ` Or stay out for the ${later.t}.` : ""}`, "bus-cut"]);
+      else if (t.spareWalk < 0) A.push(["bad", `You can't finish this route before the ${t.t} bus. Turn back by ${latest}.${later ? ` Or stay out for the ${later.t}.` : ""}`, "bus-cut"]);
+      else if (t.spareWalk < 300 && c.st.now) A.push(["bad", `Time to move: leave by ${fmtClock(new Date(t.deadline - c.ahead * 1000))} to finish before the ${t.t} bus.`, "stop-move"]);
+      else if (t.spareLoop < 0) A.push(["warn", `With your usual stops you'd miss the ${t.t} bus. Keep the next ones short.`]);
       else if (t.spareLoop < 900) A.push(["warn", `Only ${fmtDur(t.spareLoop)} spare for the ${t.t} bus. Keep moving.`]);
     }
     const before = b.live[b.live.indexOf(t) - 1];
@@ -783,7 +854,7 @@ function renderBus(c) {
   $("busCard").className = "card hero buscard " + level;
   $("busBig").textContent = big; $("busHow").textContent = how; $("busTurn").textContent = turn;
   $("busOpts").innerHTML = b.rows.map(r => {
-    const sub = r.gone ? "gone" : r.spareLoop >= 0 ? fmtDur(r.spareLoop) + " spare" : r.spareBack >= 0 ? "if you cut short" : r.reach >= 0 ? "go now" : "too late";
+    const sub = r.gone ? "gone" : r.spareLoop >= 0 ? fmtDur(r.spareLoop) + " spare" : r.spareWalk >= 0 ? "fewer stops" : r.spareBack >= 0 ? "if you cut short" : S.start && r.reach >= 0 ? "go now" : "too late";
     return `<button data-t="${r.t}" aria-pressed="${r === t}"${r.gone ? " disabled" : ""}>${r.t}<small>${sub}</small></button>`;
   }).join("");
   $("busNote").textContent = b.day ? `Stop: ${BUS.stop}. Aim to be there ${BUS.bufferMin} minutes early. From ${BUS.to}: ${b.day.from.join(", ")}. Tap a time to plan for that bus. ${BUS.taxi || ""}` : "";
@@ -795,6 +866,22 @@ $("busOpts").onclick = e => {
   S.busPick = S.busPick === x.dataset.t ? null : x.dataset.t; save(); updateUI();
 };
 
+// ---- stops tile ---------------------------------------------------------------
+function renderStops(c) {
+  const st = c.st, b = c.bus && c.bus.target, leave = b && c.ahead > 60 ? b.deadline - c.ahead * 1000 : 0;
+  const by = leave > Date.now() ? `Leave by ${fmtClock(new Date(leave))} to finish before the ${b.t} bus.` : "";
+  if (!S.start) {
+    $("stopV").textContent = `Allowing ${fmtDur(c.stopsAhead)}`;
+    $("stopS").textContent = `${S.stopPlan} min per hour of walking, until your own stops are known. Change it in Settings.`;
+  } else if (st.now) {
+    $("stopV").textContent = "Stopped " + fmtDur(st.now);
+    $("stopS").textContent = by || "Time to move on.";
+  } else {
+    $("stopV").textContent = st.count ? `${st.count} stop${st.count > 1 ? "s" : ""} · ${fmtDur(st.stopped)}` : "No stops yet";
+    $("stopS").textContent = `Allowing ${fmtDur(c.stopsAhead)} more, at ${Math.round(c.rate * 60)} min per hour of walking.`;
+  }
+}
+
 // ---- viewpoints list ----------------------------------------------------------
 function renderViews(c) {
   const p = c.route.pts, seen = new Set(), rows = [], t0 = c.bus ? c.bus.t0 : Date.now();
@@ -802,7 +889,7 @@ function renderViews(c) {
     if ((POI[name] || {}).kind !== "view" || seen.has(name)) continue;
     seen.add(name);
     const done = snapR && p[i].d <= c.pos.s + 30;
-    rows.push({ name, done, s: done ? "passed" : `${fmtKm(p[i].d - c.pos.s)} ahead · about ${fmtClock(new Date(t0 + (c.T.F[i] - c.fAt) * c.k * 1000))}` });
+    rows.push({ name, done, s: done ? "passed" : `${fmtKm(p[i].d - c.pos.s)} ahead · about ${fmtClock(new Date(t0 + (c.T.F[i] - c.fAt) * c.k * (1 + c.rate) * 1000))}` });
   }
   for (const pk of PEAKS) if (pk.kind === "view" && !seen.has(pk.name)) rows.push({ name: pk.name, done: false, s: "not on this route" });
   $("views").innerHTML = rows.map(r => `<li class="${r.done ? "done" : ""}"><button data-n="${r.name}"><span class="vn"><span class="vdot"></span>${r.name}</span><span class="vs">${r.s}${POI[r.name].note ? " · " + POI[r.name].note : ""}</span></button></li>`).join("");
@@ -852,22 +939,22 @@ function updateUI() {
     const [name, i] = nextM, tt = (c.T.F[i] - c.fAt) * c.k, up = climbBetween(p, c.pos.i, c.pos.f, Math.max(c.pos.i, i - 1), 1, false);
     $("nextV").textContent = name;
     $("nextCue").textContent = (POI[name] || {}).cue || "";
-    $("nextS").textContent = `${fmtKm(p[i].d - c.pos.s)} · ${Math.round(up)} m up · ${fmtDur(tt)} · about ${fmtClock(new Date((c.bus ? c.bus.t0 : Date.now()) + tt * 1000))}`;
+    $("nextS").textContent = `${fmtKm(p[i].d - c.pos.s)} · ${Math.round(up)} m up · ${fmtDur(tt)} · about ${fmtClock(new Date((c.bus ? c.bus.t0 : Date.now()) + tt * (1 + c.rate) * 1000))}`;
   }
   // tiles
-  $("tLeft").textContent = fmtDur(c.ahead);
-  $("tLeftS").textContent = "finish about " + fmtClock(new Date((c.bus ? c.bus.t0 : Date.now()) + c.ahead * 1000));
+  $("tLeft").textContent = fmtDur(c.ahead + c.stopsAhead);
+  $("tLeftS").textContent = `with ${fmtDur(c.stopsAhead)} of stops · finish about ` + fmtClock(new Date((c.bus ? c.bus.t0 : Date.now()) + (c.ahead + c.stopsAhead) * 1000));
   $("dLeft").textContent = fmtKm(c.distLeft);
   $("dLeftS").textContent = Math.round(c.climbAhead) + " m climbing left";
   const dl = (sun.sunset - now) / 1000;
   $("sunLeft").textContent = dl > 0 ? fmtDur(dl) : "Dark";
   $("sunS").textContent = `sunset ${fmtClock(sun.sunset)} · last light ${fmtClock(sun.dusk)}`;
-  $("elapsed").textContent = started ? fmtDur((Date.now() - S.start) / 1000) : "Not started";
-  $("paceS").textContent = c.measured ? `your pace: ${c.measured.toFixed(2)}× book time` : (started ? "measuring your pace…" : `book time at ${S.speed.toFixed(1)} km/h`);
+  $("elapsed").textContent = started ? fmtDur(c.st.moving) : "Not started";
+  $("paceS").textContent = c.measured ? `your walking pace: ${c.measured.toFixed(2)}× book time` : (started ? "measuring your pace…" : `book time at ${S.speed.toFixed(1)} km/h`);
   $("walkBtn").textContent = started ? "Walking since " + fmtClock(new Date(S.start)) : "Start walk";
   // alerts
   const A = [];
-  const backBy = new Date(Date.now() + c.back * 1000), finishBy = new Date(Date.now() + c.ahead * 1000);
+  const backBy = new Date(Date.now() + c.back * 1000), finishBy = new Date(Date.now() + (c.ahead + c.stopsAhead) * 1000);
   if (snapR && snapR.off > 60) {
     const br = (Math.atan2(snapR.x - fix.x, fix.y - snapR.y) * 180 / Math.PI + 360) % 360;
     A.push(["bad", `You're ${Math.round(snapR.off)} m off the route. The path is to the ${compass(br)}.`, "off"]);
@@ -891,7 +978,7 @@ function updateUI() {
     const rp = ROUTES[S.route].pts, gh = snapR && snapR.off < 40 ? lerp(rp[snapR.i].e, rp[Math.min(snapR.i + 1, rp.length - 1)].e, snapR.f) : groundHeight(fix.lat, fix.lon);
     $("hereH").textContent = gh ? `Ground height here about ${Math.round(gh)} m` : "";
   }
-  drawMap(); drawProfile(c); renderPlan(c); renderViews(c);
+  drawMap(); drawProfile(c); renderPlan(c); renderViews(c); renderStops(c);
 }
 
 // ---- route plan table --------------------------------------------------------
@@ -925,10 +1012,10 @@ function renderPlan(c) {
   let h = `<tr><th>Point</th><th class="n">km</th><th class="n">Height</th><th class="n">Time</th>${startT ? '<th class="n">Due</th>' : ""}<th class="n">Latest</th></tr>`;
   for (const [name, i] of marks) {
     const done = snapR && p[i].d <= c.pos.s + 30, latest = new Date(deadline - (T.F[last] - T.F[i]) * k * 1000);
-    h += `<tr style="${done ? "color:var(--muted)" : ""}"><td>${name}</td><td class="n">${(p[i].d / 1000).toFixed(1)}</td><td class="n">${Math.round(p[i].e)} m</td><td class="n">${fmtDur(T.F[i] * k)}</td>${startT ? `<td class="n">${fmtClock(new Date(startT + T.F[i] * k * 1000))}</td>` : ""}<td class="n">${fmtClock(latest)}</td></tr>`;
+    h += `<tr style="${done ? "color:var(--muted)" : ""}"><td>${name}</td><td class="n">${(p[i].d / 1000).toFixed(1)}</td><td class="n">${Math.round(p[i].e)} m</td><td class="n">${fmtDur(T.F[i] * k)}</td>${startT ? `<td class="n">${done ? "✓" : fmtClock(new Date((c.bus ? c.bus.t0 : Date.now()) + (T.F[i] - c.fAt) * k * (1 + c.rate) * 1000))}</td>` : ""}<td class="n">${fmtClock(latest)}</td></tr>`;
   }
   $("plan").innerHTML = h;
-  $("planNote").textContent = `Moving time at ${S.speed.toFixed(1)} km/h${c.measured ? `, scaled by your pace (${c.k.toFixed(2)}×)` : ""}. Add time for stops. Latest: be at that point by then to ${bt ? `reach the stop by ${fmtClock(new Date(deadline))} for the ${bt.t} bus` : "finish by sunset"} without stopping.`;
+  $("planNote").textContent = `Moving time at ${S.speed.toFixed(1)} km/h${c.measured ? `, scaled by your pace (${c.k.toFixed(2)}×)` : ""}. Due includes stops at ${Math.round(c.rate * 60)} min per hour of walking. Latest: be at that point by then to ${bt ? `reach the stop by ${fmtClock(new Date(deadline))} for the ${bt.t} bus` : "finish by sunset"} without stopping.`;
 }
 
 // ---- map ------------------------------------------------------------------
@@ -1293,6 +1380,7 @@ function onPos(g) {
     if (!S.start && snapR.off > 3000) snapR = null;   // still on the way here: plan from the stop
     else if (snapR.off < 80) S.lastS = snapR.s;
     if (S.start) {
+      trackStop(x, y, fix.t, acc, snapR, times(ROUTES[S.route]));
       const lt = S.track[S.track.length - 1];
       if (!lt || Math.hypot(...[0, 1].map(k => (toXY(lt[0], lt[1])[k] - [x, y][k]))) > 15) {
         S.track.push([+lat.toFixed(5), +lon.toFixed(5), Math.round(fix.t / 1000)]);
@@ -1317,7 +1405,7 @@ function startGPS() {
 $("gpsBtn").onclick = startGPS;
 $("walkBtn").onclick = () => {
   if (S.start) return;
-  S.start = Date.now(); S.lastS = 0; S.track = []; save();
+  S.start = Date.now(); S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.stopsV = 1; S.kMove = null; save();
   if (watchId === null) startGPS();
   if (!in3d) { follow = true; $("follow").classList.add("on"); if (view.s < 0.4) view.s = 0.5; }
   updateUI();
@@ -1326,7 +1414,7 @@ $("walkBtn").onclick = () => {
 // ---- controls ---------------------------------------------------------------
 function setRoute(r) {
   if (S.route === r) return;
-  S.route = r;
+  S.route = r; S.anchor = null;
   // keep the same place on the shared climb; past the summit we don't know, so re-snap freely
   if (fix) { snapR = snap(ROUTES[r], fix.x, fix.y, S.lastS); if (!S.start && snapR.off > 3000) snapR = null; else S.lastS = snapR.s; }
   save(); fitRoute(); updateUI();
@@ -1335,10 +1423,12 @@ function setRoute(r) {
 document.querySelectorAll(".routes button").forEach(b => { b.onclick = () => setRoute(b.dataset.r); });
 $("speed").value = S.speed; $("speedV").textContent = S.speed.toFixed(1) + " km/h";
 $("speed").oninput = e => { S.speed = +e.target.value; $("speedV").textContent = S.speed.toFixed(1) + " km/h"; save(); updateUI(); };
+$("stopPlan").value = S.stopPlan; $("stopPlanV").textContent = S.stopPlan + " min";
+$("stopPlan").oninput = e => { S.stopPlan = +e.target.value; $("stopPlanV").textContent = S.stopPlan + " min"; save(); updateUI(); };
 $("useMine").checked = S.useMine; $("useMine").onchange = e => { S.useMine = e.target.checked; save(); updateUI(); };
 $("resetBtn").onclick = () => { $("resetConfirm").hidden = false; };
 $("resetNo").onclick = () => { $("resetConfirm").hidden = true; };
-$("resetYes").onclick = () => { S.start = null; S.lastS = 0; S.track = []; snapR = fix ? snap(ROUTES[S.route], fix.x, fix.y, 0) : null; save(); $("resetConfirm").hidden = true; updateUI(); };
+$("resetYes").onclick = () => { S.start = null; S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.kMove = null; snapR = fix ? snap(ROUTES[S.route], fix.x, fix.y, 0) : null; save(); $("resetConfirm").hidden = true; updateUI(); };
 // The screen lock is dropped whenever the page is hidden, so ask again when it comes back.
 let wake = null;
 async function holdScreen() {
@@ -1405,6 +1495,7 @@ document.querySelectorAll(".routes button").forEach(b => {
 });
 setInterval(() => { if (document.visibilityState === "visible") updateUI(); }, 30000);
 $("offlineInfo").textContent = `Stored inside this file: ${Object.keys(TILES).length} topo map tiles, the height map, 3D terrain and all ${Object.keys(ROUTES).length} routes. Only the satellite layer needs the internet.`;
+if (S.start && S.stopsV !== 1) { replayStops(); save(); }
 applyTheme(); fitRoute(); updateUI(); wakeLabel(); holdScreen();
 if (S.start) startGPS();
 </script>
