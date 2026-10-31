@@ -125,19 +125,6 @@ ol,ul{padding-left:1.2em;margin:.4em 0}
     </div>
   </header>
 
-  <div class="routes" role="group" aria-label="Route" style="grid-template-columns:auto repeat(1,minmax(0,1fr))">
-    <span></span>
-    <span class="rh"></span>
-    <span class="rl">Landscape Trail<small>with Gordale Scar</small></span>
-    <button data-r="trail"></button>
-    <span class="rl">Trail, no Scar<small>skips Gordale Scar</small></span>
-    <button data-r="noscar"></button>
-    <span class="rl">Waterfalls<small>Foss and Gordale</small></span>
-    <button data-r="falls"></button>
-    <span class="rl">Cove only<small>out and back</small></span>
-    <button data-r="cove"></button>
-  </div>
-
   <div class="card row" style="justify-content:space-between">
     <div class="status" id="gpsStatus"><span class="dot"></span>GPS off</div>
     <div class="row">
@@ -156,23 +143,6 @@ ol,ul{padding-left:1.2em;margin:.4em 0}
     <div class="busopts" id="busOpts" role="group" aria-label="Choose your bus"></div>
     <div class="sub" id="busNote" style="margin-top:6px"></div>
   </section>
-
-  <section class="card hero" aria-live="polite">
-    <h2>Back to Buck Inn bus stop</h2>
-    <div class="big" id="backTime">–</div>
-    <div class="how" id="backHow"></div>
-    <div class="sub" id="backEta"></div>
-    <div class="sub" id="headBy"></div>
-  </section>
-
-  <div class="tiles">
-    <div class="tile wide"><div class="k">Next point</div><div class="v" id="nextV">–</div><div class="s" id="nextS"></div><div class="cue" id="nextCue"></div></div>
-    <div class="tile"><div class="k">Time left on route</div><div class="v" id="tLeft">–</div><div class="s" id="tLeftS"></div></div>
-    <div class="tile"><div class="k">Distance left</div><div class="v" id="dLeft">–</div><div class="s" id="dLeftS"></div></div>
-    <div class="tile"><div class="k">Daylight left</div><div class="v" id="sunLeft">–</div><div class="s" id="sunS"></div></div>
-    <div class="tile"><div class="k">Walking</div><div class="v" id="elapsed">–</div><div class="s" id="paceS"></div></div>
-    <div class="tile wide"><div class="k">Stops</div><div class="v" id="stopV">–</div><div class="s" id="stopS"></div></div>
-  </div>
 
   <div class="mapwrap">
     <canvas id="map" aria-label="Route map. Tap a point to see its grid reference and height."></canvas>
@@ -194,6 +164,37 @@ ol,ul{padding-left:1.2em;margin:.4em 0}
     <button data-b="topo">Topo map</button><button data-b="height">Height</button><button data-b="sat">Satellite</button><button data-b="plain">Plain</button>
   </div>
   <div class="small" id="baseNote"></div>
+
+  <div class="tiles">
+    <div class="tile wide"><div class="k">Next point</div><div class="v" id="nextV">–</div><div class="s" id="nextS"></div><div class="cue" id="nextCue"></div></div>
+    <div class="tile"><div class="k">Time left on route</div><div class="v" id="tLeft">–</div><div class="s" id="tLeftS"></div></div>
+    <div class="tile"><div class="k">Distance left</div><div class="v" id="dLeft">–</div><div class="s" id="dLeftS"></div></div>
+    <div class="tile"><div class="k">Daylight left</div><div class="v" id="sunLeft">–</div><div class="s" id="sunS"></div></div>
+    <div class="tile"><div class="k">Walking</div><div class="v" id="elapsed">–</div><div class="s" id="paceS"></div></div>
+    <div class="tile wide"><div class="k">Stops</div><div class="v" id="stopV">–</div><div class="s" id="stopS"></div></div>
+  </div>
+
+  <section class="card hero" aria-live="polite">
+    <h2>Back to Buck Inn bus stop</h2>
+    <div class="big" id="backTime">–</div>
+    <div class="how" id="backHow"></div>
+    <div class="sub" id="backEta"></div>
+    <div class="sub" id="headBy"></div>
+  </section>
+
+  <h2 style="margin:4px 0 -6px">Change route</h2>
+  <div class="routes" role="group" aria-label="Route" style="grid-template-columns:auto repeat(1,minmax(0,1fr))">
+    <span></span>
+    <span class="rh"></span>
+    <span class="rl">Landscape Trail<small>with Gordale Scar</small></span>
+    <button data-r="trail"></button>
+    <span class="rl">Trail, no Scar<small>skips Gordale Scar</small></span>
+    <button data-r="noscar"></button>
+    <span class="rl">Waterfalls<small>Foss and Gordale</small></span>
+    <button data-r="falls"></button>
+    <span class="rl">Cove only<small>out and back</small></span>
+    <button data-r="cove"></button>
+  </div>
 
   <section class="card">
     <h2>Viewpoints</h2>
@@ -692,8 +693,11 @@ function stopRate(st) {
 }
 // A walk begun before stops were tracked: read them back from the recorded track.
 function replayStops() {
-  S.stops = []; S.anchor = null; S.stopsV = 1;
+  S.stops = []; S.anchor = null; S.stopsV = 2;
   const r = ROUTES[S.route], T = times(r); let s = 0;
+  const near = S.track.findIndex(q => { const [x, y] = toXY(q[0], q[1]); return r.pts.some(w => Math.hypot(w.x - x, w.y - y) < 300); });
+  if (near < 0) { S.track = []; S.start = Date.now(); S.lastS = 0; }
+  else if (near > 0) { S.track = S.track.slice(near); S.start = S.track[0][2] * 1000; S.lastS = 0; }
   for (const q of S.track) {
     const [x, y] = toXY(q[0], q[1]), h = snap(r, x, y, s);
     if (h.off < 80) s = h.s;
@@ -801,8 +805,9 @@ function busPlan(c, now) {
   if (!day) return { day: null, stale, rows: [], live: [], target: null, t0: now.getTime(), arrives: null };
   // Before the walk starts and away from the village, count from the bus that brings you here.
   const nearby = fix && Math.hypot(fix.x - CAR.xy[0], fix.y - CAR.xy[1]) < 3000;
+  const onWalk = !!(S.start && snapR);
   let t0 = now.getTime(), arrives = null;
-  if (!S.start && !nearby) {
+  if (!onWalk && !nearby) {
     const a = day.arr.map(x => hmDate(x, now).getTime()).find(x => x >= t0);
     if (a) { t0 = a; arrives = new Date(a); }
   }
@@ -814,7 +819,7 @@ function busPlan(c, now) {
   const live = rows.filter(r => !r.gone), picked = live.find(r => r.t === S.busPick) || null;
   // A bus you chose stays the target. Otherwise take the first bus you can still reach: walking
   // the whole route before you set off, or by heading back directly once you are out on it.
-  const target = picked || (S.start ? live.find(r => r.reach >= 0) : live.find(r => r.spareLoop >= 0)) || live.find(r => r.reach >= 0) || live.at(-1) || null;
+  const target = picked || (onWalk ? live.find(r => r.reach >= 0) : live.find(r => r.spareLoop >= 0)) || live.find(r => r.reach >= 0) || live.at(-1) || null;
   return { day, stale, rows, live, target, picked: !!picked, t0, arrives };
 }
 function renderBus(c) {
@@ -848,13 +853,13 @@ function renderBus(c) {
       else if (t.spareLoop < 900) A.push(["warn", `Only ${fmtDur(t.spareLoop)} spare for the ${t.t} bus. Keep moving.`]);
     }
     const before = b.live[b.live.indexOf(t) - 1];
-    if (S.start && before && !b.picked) A.push(["warn", `You can't reach the ${before.t} bus now. Aim for the ${t.t}.`, "bus-roll"]);
+    if (S.start && snapR && before && !b.picked) A.push(["warn", `You can't reach the ${before.t} bus now. Aim for the ${t.t}.`, "bus-roll"]);
   }
   if (b.stale) A.push(["warn", "Check the bus times: this timetable covers 24 October 2026 to 24 April 2027."]);
   $("busCard").className = "card hero buscard " + level;
   $("busBig").textContent = big; $("busHow").textContent = how; $("busTurn").textContent = turn;
   $("busOpts").innerHTML = b.rows.map(r => {
-    const sub = r.gone ? "gone" : r.spareLoop >= 0 ? fmtDur(r.spareLoop) + " spare" : r.spareWalk >= 0 ? "fewer stops" : r.spareBack >= 0 ? "if you cut short" : S.start && r.reach >= 0 ? "go now" : "too late";
+    const sub = r.gone ? "gone" : r.spareLoop >= 0 ? fmtDur(r.spareLoop) + " spare" : r.spareWalk >= 0 ? "fewer stops" : r.spareBack >= 0 ? "if you cut short" : S.start && snapR && r.reach >= 0 ? "go now" : "too late";
     return `<button data-t="${r.t}" aria-pressed="${r === t}"${r.gone ? " disabled" : ""}>${r.t}<small>${sub}</small></button>`;
   }).join("");
   $("busNote").textContent = b.day ? `Stop: ${BUS.stop}. Aim to be there ${BUS.bufferMin} minutes early. From ${BUS.to}: ${b.day.from.join(", ")}. Tap a time to plan for that bus. ${BUS.taxi || ""}` : "";
@@ -870,7 +875,7 @@ $("busOpts").onclick = e => {
 function renderStops(c) {
   const st = c.st, b = c.bus && c.bus.target, leave = b && c.ahead > 60 ? b.deadline - c.ahead * 1000 : 0;
   const by = leave > Date.now() ? `Leave by ${fmtClock(new Date(leave))} to finish before the ${b.t} bus.` : "";
-  if (!S.start) {
+  if (!S.start || !snapR) {
     $("stopV").textContent = `Allowing ${fmtDur(c.stopsAhead)}`;
     $("stopS").textContent = `${S.stopPlan} min per hour of walking, until your own stops are known. Change it in Settings.`;
   } else if (st.now) {
@@ -909,7 +914,7 @@ function updateUI() {
   c.bus = busPlan(c, now);
   const busAlerts = renderBus(c);
   document.querySelectorAll(".routes button").forEach(b => b.setAttribute("aria-pressed", b.dataset.r === S.route));
-  $("routeSummary").innerHTML = `<b>${c.route.name}.</b> ${c.route.desc}.`;
+  $("routeSummary").innerHTML = started ? `<b>${c.route.name}</b>` : `<b>${c.route.name}.</b> ${c.route.desc}.`;
   // hero
   $("backTime").textContent = snapR ? fmtDur(c.back) : "–";
   const atCar = fix && Math.hypot(fix.x - CAR.xy[0], fix.y - CAR.xy[1]) < 120 && (!started || c.pos.s < 200 || c.pos.s > c.total - 200);
@@ -951,7 +956,7 @@ function updateUI() {
   $("sunS").textContent = `sunset ${fmtClock(sun.sunset)} · last light ${fmtClock(sun.dusk)}`;
   $("elapsed").textContent = started ? fmtDur(c.st.moving) : "Not started";
   $("paceS").textContent = c.measured ? `your walking pace: ${c.measured.toFixed(2)}× book time` : (started ? "measuring your pace…" : `book time at ${S.speed.toFixed(1)} km/h`);
-  $("walkBtn").textContent = started ? "Walking since " + fmtClock(new Date(S.start)) : "Start walk";
+  $("walkBtn").textContent = !started ? "Start walk" : snapR || !fix ? "Walking since " + fmtClock(new Date(S.start)) : "Starts on arrival";
   // alerts
   const A = [];
   const backBy = new Date(Date.now() + c.back * 1000), finishBy = new Date(Date.now() + (c.ahead + c.stopsAhead) * 1000);
@@ -1020,6 +1025,7 @@ function renderPlan(c) {
 
 // ---- map ------------------------------------------------------------------
 const cv = $("map"), cx = cv.getContext("2d");
+let farFit = false;   // following, but outside the stored map
 let view = null;   // {x, y, s}  centre in metres, pixels per metre
 function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function fitRoute() {
@@ -1033,7 +1039,12 @@ function drawMap() {
   const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   if (!view) fitRoute();
-  if (follow && fix) { view.x = fix.x; view.y = fix.y; }
+  if (follow && fix) {
+    if (fix.lat > HEIGHT.S && fix.lat < HEIGHT.N && fix.lon > HEIGHT.W && fix.lon < HEIGHT.E) {
+      if (farFit) { farFit = false; view.s = 0.5; }
+      view.x = fix.x; view.y = fix.y;
+    } else { farFit = true; fitRoute(); }
+  }
   cx.setTransform(dpr, 0, 0, dpr, 0, 0);
   cx.fillStyle = cssVar("--card"); cx.fillRect(0, 0, w, h);
   const P = (x, y) => [(x - view.x) * view.s + w / 2, (y - view.y) * view.s + h / 2];
@@ -1377,9 +1388,11 @@ function onPos(g) {
   setStatus(acc <= 30 ? "ok" : "wait", `GPS ±${Math.round(acc)} m`);
   if (acc < 80) {
     snapR = snap(ROUTES[S.route], x, y, S.lastS);
-    if (!S.start && snapR.off > 3000) snapR = null;   // still on the way here: plan from the stop
-    else if (snapR.off < 80) S.lastS = snapR.s;
-    if (S.start) {
+    if (snapR.off > 1000 && S.lastS < 100) {   // still on the way here: plan from the stop, and a walk started early waits
+      snapR = null;
+      if (S.start) { S.start = Date.now(); S.track = []; S.stops = []; S.anchor = null; }
+    } else if (snapR.off < 80) S.lastS = snapR.s;
+    if (S.start && snapR) {
       trackStop(x, y, fix.t, acc, snapR, times(ROUTES[S.route]));
       const lt = S.track[S.track.length - 1];
       if (!lt || Math.hypot(...[0, 1].map(k => (toXY(lt[0], lt[1])[k] - [x, y][k]))) > 15) {
@@ -1405,7 +1418,7 @@ function startGPS() {
 $("gpsBtn").onclick = startGPS;
 $("walkBtn").onclick = () => {
   if (S.start) return;
-  S.start = Date.now(); S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.stopsV = 1; S.kMove = null; save();
+  S.start = Date.now(); S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.stopsV = 2; S.kMove = null; save();
   if (watchId === null) startGPS();
   if (!in3d) { follow = true; $("follow").classList.add("on"); if (view.s < 0.4) view.s = 0.5; }
   updateUI();
@@ -1416,7 +1429,7 @@ function setRoute(r) {
   if (S.route === r) return;
   S.route = r; S.anchor = null;
   // keep the same place on the shared climb; past the summit we don't know, so re-snap freely
-  if (fix) { snapR = snap(ROUTES[r], fix.x, fix.y, S.lastS); if (!S.start && snapR.off > 3000) snapR = null; else S.lastS = snapR.s; }
+  if (fix) { snapR = snap(ROUTES[r], fix.x, fix.y, S.lastS); if (snapR.off > 1000 && S.lastS < 100) snapR = null; else S.lastS = snapR.s; }
   save(); fitRoute(); updateUI();
   if (in3d) { stopFly(); reset3d(); texture3d(); }
 }
@@ -1495,7 +1508,7 @@ document.querySelectorAll(".routes button").forEach(b => {
 });
 setInterval(() => { if (document.visibilityState === "visible") updateUI(); }, 30000);
 $("offlineInfo").textContent = `Stored inside this file: ${Object.keys(TILES).length} topo map tiles, the height map, 3D terrain and all ${Object.keys(ROUTES).length} routes. Only the satellite layer needs the internet.`;
-if (S.start && S.stopsV !== 1) { replayStops(); save(); }
+if (S.start && S.stopsV !== 2) { replayStops(); save(); }
 applyTheme(); fitRoute(); updateUI(); wakeLabel(); holdScreen();
 if (S.start) startGPS();
 </script>
