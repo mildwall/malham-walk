@@ -769,7 +769,7 @@ function renderBus(c) {
     else { level = "bad"; big = "Too late"; how = lastBus ? "You can't reach the last bus at this pace." : `You can't reach this bus. Next: ${later.t}.`; }
     const finish = fmtClock(new Date(b.t0 + c.ahead * 1000));
     turn = b.arrives ? `Bus gets in ${fmtClock(b.arrives)}. Walking ${fmtDur(c.ahead)}, so done about ${finish} without stops.`
-      : snapR && c.back > 60 ? `Finish about ${finish}. Leave for the stop by ${latest} at the very latest.` : `Finish about ${finish}.`;
+      : snapR && c.back > 60 && t.spareBack >= 0 ? `Finish about ${finish}. Leave for the stop by ${latest} at the very latest.` : `Finish about ${finish}.`;
     if (S.start && c.back > 60) {
       if (t.reach < 0) A.push(["bad", `You won't reach the ${t.t} bus at this pace.${later ? ` Next: ${later.t}.` : " It's the last bus today."}`, "bus-miss"]);
       else if (t.spareBack < 600) A.push(["bad", `Go to the stop now for the ${t.t} bus.`, "bus-now"]);
