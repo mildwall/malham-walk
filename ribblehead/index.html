@@ -1394,7 +1394,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   $("offlineInfo").textContent = "Saving for offline use…";
   navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then(async () => {
     if (navigator.storage && navigator.storage.persist) await navigator.storage.persist();
-    $("offlineInfo").textContent = (await caches.match("index.html")) ? "Saved on this phone for offline use, maps included." : "Not saved yet: keep this page open with signal, then reload it.";
+    $("offlineInfo").textContent = (await caches.match("./")) || (await caches.match("index.html")) ? "Saved on this phone for offline use, maps included." : "Not saved yet: keep this page open with signal, then reload it.";
   }).catch(() => { $("offlineInfo").textContent = ""; });
 }
 </script>
