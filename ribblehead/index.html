@@ -65,6 +65,12 @@ th{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--mu
 .walk:first-of-type{border-top:0;padding-top:0;margin-top:0}
 .chip{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.78rem;font-weight:650;background:var(--chip)}
 .foot{font-size:.78rem;color:var(--muted)}
+.tick{display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;align-items:start;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 0;color:var(--fg);font:inherit;cursor:pointer}
+.tick:first-child{border-top:0}
+.tick .box{width:24px;height:24px;border:2px solid var(--muted);border-radius:6px;display:grid;place-items:center;font-weight:800;color:#fff}
+.tick[aria-pressed="true"] .box{background:var(--good);border-color:var(--good)}
+.tick[aria-pressed="true"] b{text-decoration:line-through;color:var(--muted)}
+.tick:focus-visible{outline:3px solid var(--me);outline-offset:2px;border-radius:6px}
 a{color:var(--me)}
 </style>
 </head>
@@ -110,6 +116,13 @@ a{color:var(--me)}
     <div id="legs"></div>
   </section>
 
+  <section class="card" id="appleby">
+    <h2>Appleby: things to tick off (11:13 – 13:07)</h2>
+    <p class="sub">In walking order: a loop of about 3 km and 40 min of actual walking, from the station down to the river and church, up Boroughgate to the castle gate, then back. Tap an item to tick it; ticks are saved on this phone. <b id="apCount"></b></p>
+    <div id="apList"></div>
+    <p class="sub" style="margin-top:8px">Turn round by <b>12:40</b> wherever you are. The walk back up to the station is uphill and takes about 15 min, and you want to be on the Leeds-bound platform by 13:00. Opening times are from the places' own websites and guides, not confirmed for this Sunday.</p>
+  </section>
+
   <section class="card">
     <h2>If you miss the 16:44 at Ribblehead</h2>
     <table>
@@ -145,7 +158,7 @@ a{color:var(--me)}
     <h2>Tickets and practical notes</h2>
     <ul>
       <li><b>Ticket:</b> an Off-Peak Day Return Shipley ↔ Appleby (via Skipton), quoted at £29.50 for this date, ⅓ off with a railcard. Ribblehead is on the route, so getting off there on the way back should be a normal break of journey. Ask the conductor or ticket office to confirm before you get off.</li>
-      <li><b>Appleby wait (1 h 54 min):</b> the town centre is about 10 min walk downhill from the station: Boroughgate, St Lawrence's church, the River Eden bridge. Start back up the hill by 12:50.</li>
+      <li><b>Appleby wait (1 h 54 min):</b> see the tick list above. The town centre is about 10–12 min downhill from the station. Turn round by 12:40.</li>
       <li><b>Seats:</b> going north, a seat on the left is often recommended for views down Dentdale. On the way back the Appleby–Ribblehead section is in daylight too.</li>
       <li><b>Weather:</b> one model forecast (TheWeatherOutlook) gives about 9 °C, light wind (gusts ~17 mph), no rain, 94 % humidity under high pressure. That means a dry day but possibly low cloud or mist on the tops. Ribblehead is at about 300 m, so it will feel colder than Shipley. Take a hat, gloves, waterproof and a <b>torch</b>: the 16:44 leaves after sunset.</li>
       <li><b>Sunday trains in the North West:</b> Northern has been cutting some Sunday trains because conductors are short. Check the live boards below on the morning, and again at Appleby before 13:07.</li>
@@ -188,11 +201,25 @@ const LEGS = [
   { kind: "train", dep: "16:44", arr: "17:47", from: "Ribblehead", to: "Shipley", what: "Northern, Carlisle → Nottingham",
     calls: "Horton-in-Ribblesdale 16:51 · Settle 17:00 · Hellifield 17:10 · Skipton 17:24 · Keighley 17:37 · Bingley 17:42 · Shipley 17:47" },
 ];
+// Appleby wait: things to tick off, in walking order from the station
+const APPLEBY = [
+  ["station", "Appleby station itself", "Grade II listed, opened 1876 and one of the biggest stations on the line. Find the slate plaque to Bishop Eric Treacy, the railway photographer who died on this platform in 1978 waiting for the steam engine Evening Star. Also the water tower and water crane, put back in 1991 for steam specials."],
+  ["bridge", "River Eden from the town bridge", "Downhill from the station to The Sands, then onto the bridge. The Eden is one of the few English rivers that flows north."],
+  ["church", "St Lawrence's Church and the cloisters", "At the bottom of Boroughgate, entered through the stone cloisters. Inside: the black marble tomb of Lady Anne Clifford (died 1676), the alabaster tomb of her mother, and one of England's oldest working church organs. Normally open daily 9:30–16:30. Sunday morning service may still be on when you arrive, so go in quietly or do it last."],
+  ["lowcross", "Low Cross", "The pillar by the church gates: an 18th-century copy of the High Cross at the top of the street."],
+  ["moot", "Moot Hall (1596)", "The white building in the middle of Boroughgate, the old town hall. The tourist information office is on the ground floor; it may be closed on a November Sunday."],
+  ["boroughgate", "Walk up Boroughgate", "The wide tree-lined main street, uphill from church to castle. Spot No. 11 (late 1500s, twin gables), the Red House (1717) at No. 30, and the Courtyard Gallery in a 17th-century granary at No. 32."],
+  ["almshouses", "St Anne's Hospital almshouses (1651)", "On the left near the top. Lady Anne Clifford built them for 12 poor widows, and people still live there. The courtyard and tiny chapel can usually be visited in the daytime; be quiet."],
+  ["highcross", "High Cross", "At the top of Boroughgate. 17th century, with a sundial and the motto \"Retain your loyalty, preserve your rights\"."],
+  ["castle", "Appleby Castle gate", "The Norman keep (Caesar's Tower) stands behind the walls. It's now a hotel, and the grounds tour is mainly a summer thing, so expect to see it from the gate only."],
+  ["coffee", "Coffee and cake", "Bojangles café says it is open 9:00–15:30 every day. Eden River Café on Bridge Street also opens on Sundays. Both are on the way back to the station."],
+  ["riverside", "Riverside path by The Sands", "Flat path along the Eden near the bridge. A good place to fill the last spare minutes before the climb back up."],
+];
 const FALLBACK = [{ dep: "18:51", arr: "19:49" }, { dep: "20:35", arr: "21:37" }];
 
 // ---- state ----------------------------------------------------------------------------------
 const KEY = "ribblehead-day-v1";
-let S = { speed: 4, theme: "auto" };
+let S = { speed: 4, theme: "auto", ticks: {} };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 let fix = null;   // {lat, lon, acc, t}
@@ -237,6 +264,21 @@ function renderLegs(now) {
   }).join("");
 }
 
+function renderAppleby() {
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  $("apList").innerHTML = APPLEBY.map(([k, name, note]) =>
+    `<button class="tick" data-tick="${k}" aria-pressed="${!!S.ticks[k]}"><span class="box">${S.ticks[k] ? "✓" : ""}</span>
+     <span><b>${esc(name)}</b><br><span class="sub">${esc(note)}</span></span></button>`).join("");
+  const n = APPLEBY.filter(a => S.ticks[a[0]]).length;
+  $("apCount").textContent = `${n} of ${APPLEBY.length} ticked.`;
+}
+$("apList").addEventListener("click", e => {
+  const b = e.target.closest("[data-tick]"); if (!b) return;
+  const k = b.dataset.tick; S.ticks[k] = !S.ticks[k]; if (!S.ticks[k]) delete S.ticks[k];
+  save(); renderAppleby();
+  const again = $("apList").querySelector(`[data-tick="${k}"]`); if (again) again.focus();
+});
+
 function alert(cls, text) { return `<div class="alert ${cls}">${text}</div>`; }
 
 function render() {
@@ -273,7 +315,8 @@ function render() {
   } else if (now < L[2].d) {
     const left = L[2].d - now;
     head = "In Appleby: train back south"; big = "13:07";
-    how = `Train to Ribblehead leaves in ${fmtDur(left)}, from the southbound (Leeds) platform. Be back at the station by 13:00.`;
+    how = `Train to Ribblehead leaves in ${fmtDur(left)}, from the southbound (Leeds) platform. Be back at the station by 13:00. Ticked so far in town: ${APPLEBY.filter(a => S.ticks[a[0]]).length} of ${APPLEBY.length} (list below).`;
+    if (left >= 25 && now > toMin("12:40")) A.push(alert("warn", "It's after 12:40: start heading back up to the station."));
     if (left < 25) A.push(alert(left < 12 ? "bad" : "warn", `${fmtDur(left)} to the 13:07. If you're in town, start walking up now: it's uphill and about 10–15 min.`));
     A.push(alert("warn", "If the 13:07 doesn't run, the next one is 16:05 (Ribblehead 16:44, after sunset). Then skip the walk and stay on to Shipley (17:47)."));
   } else if (now < L[2].a) {
@@ -332,7 +375,7 @@ $("wakeBtn").addEventListener("click", async () => {
   catch (e) { $("wakeBtn").textContent = "Screen lock not available"; }
 });
 
-applyTheme(); marks(); render();
+applyTheme(); marks(); renderAppleby(); render();
 setInterval(render, 15000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
