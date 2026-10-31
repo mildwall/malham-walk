@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d2a24">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Ribblehead Train Day</title>
+<style>
+/* Same look as the Malham page: one phone-width column, "what to do now" panel first. */
+:root{
+  --bg:#f3f4ef; --card:#ffffff; --fg:#17201b; --muted:#5b6660; --line:#d6dbd3;
+  --route:#d9480f; --me:#1971c2; --good:#2b8a3e; --warn:#e67700; --bad:#c92a2a; --chip:#e8ebe4;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111814; --card:#1a231e; --fg:#e8eee9; --muted:#9aa79f; --line:#2c3831;
+  --route:#ff7a3d; --me:#4dabf7; --good:#51cf66; --warn:#ffa94d; --bad:#ff6b6b; --chip:#24302a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111814; --card:#1a231e; --fg:#e8eee9; --muted:#9aa79f; --line:#2c3831;
+  --route:#ff7a3d; --me:#4dabf7; --good:#51cf66; --warn:#ffa94d; --bad:#ff6b6b; --chip:#24302a; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--font);
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+main{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-top:12px}
+h1{font-size:1.25rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px;font-weight:600}
+h3{font-size:1rem;margin:0 0 4px}
+p{margin:0 0 8px} p:last-child{margin-bottom:0}
+ul{margin:0;padding-left:1.1rem} li{margin:2px 0}
+.sub{color:var(--muted);font-size:.85rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.hero .big{font-size:2.6rem;font-weight:750;letter-spacing:-.02em;line-height:1.05;font-variant-numeric:tabular-nums}
+.hero .how{font-size:.98rem;margin-top:4px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.tile .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.tile .v{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile .s{font-size:.8rem;color:var(--muted)}
+.alert{border-radius:10px;padding:9px 12px;font-weight:600;font-size:.92rem;margin-top:8px}
+.alert.warn{background:color-mix(in srgb,var(--warn) 18%,var(--card));border:1px solid var(--warn)}
+.alert.bad{background:color-mix(in srgb,var(--bad) 18%,var(--card));border:1px solid var(--bad)}
+.alert.good{background:color-mix(in srgb,var(--good) 15%,var(--card));border:1px solid var(--good)}
+.leg{display:grid;grid-template-columns:4.2rem minmax(0,1fr);gap:2px 10px;padding:8px 0;border-top:1px solid var(--line)}
+.leg:first-of-type{border-top:0}
+.leg .t{font-weight:700;font-variant-numeric:tabular-nums}
+.leg.now{background:color-mix(in srgb,var(--me) 10%,transparent);border-radius:8px;padding-left:6px;padding-right:6px}
+.leg.past{opacity:.55}
+.leg .kind{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+details{margin-top:4px} summary{cursor:pointer;color:var(--me);font-size:.85rem}
+.calls{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:4px}
+table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:5px 4px;border-top:1px solid var(--line)}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-top:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);font:inherit;font-weight:600;padding:9px 12px;border-radius:9px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.primary{background:var(--me);border-color:var(--me);color:#fff}
+.btn[aria-pressed="true"]{border-color:var(--me);box-shadow:inset 0 0 0 1px var(--me)}
+.btn:focus-visible{outline:3px solid var(--me);outline-offset:2px}
+.walk{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.walk:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.chip{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.78rem;font-weight:650;background:var(--chip)}
+.foot{font-size:.78rem;color:var(--muted)}
+a{color:var(--me)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Settle–Carlisle day out: Shipley → Appleby → Ribblehead walk → Shipley</h1>
+    <div class="sub">Sunday 1 November 2026 · times are UK time (GMT, clocks went back on 25 October)</div>
+  </header>
+
+  <div id="dateNote"></div>
+
+  <section class="card hero" aria-live="polite">
+    <h2 id="heroHead">Next</h2>
+    <div class="big" id="heroBig">--:--</div>
+    <div class="how" id="heroHow"></div>
+    <div id="heroAlerts"></div>
+  </section>
+
+  <section class="tiles">
+    <div class="tile"><div class="k">Now</div><div class="v" id="tNow">--:--</div><div class="s" id="tNowS"></div></div>
+    <div class="tile"><div class="k">Sunset · dark</div><div class="v">16:35</div><div class="s">Civil dusk 17:13 at Ribblehead</div></div>
+    <div class="tile"><div class="k">To Ribblehead station</div><div class="v" id="tDist">–</div><div class="s" id="tDistS">Turn on GPS below</div></div>
+    <div class="tile"><div class="k">Leave by</div><div class="v" id="tLeave">–</div><div class="s" id="tLeaveS">for the 16:44 home</div></div>
+  </section>
+
+  <section class="card">
+    <h2>GPS (only used at Ribblehead)</h2>
+    <div class="row">
+      <button class="btn primary" id="gpsBtn">Start GPS</button>
+      <span class="sub" id="gpsStatus">Off. Distance is straight-line to the station, padded ×1.35 for the path.</span>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <span class="sub">Walking pace:</span>
+      <button class="btn" data-speed="3">3 km/h</button>
+      <button class="btn" data-speed="4">4 km/h</button>
+      <button class="btn" data-speed="5">5 km/h</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>The day, leg by leg</h2>
+    <div id="legs"></div>
+  </section>
+
+  <section class="card">
+    <h2>If you miss the 16:44 at Ribblehead</h2>
+    <table>
+      <thead><tr><th>Ribblehead</th><th>Shipley</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>16:44</td><td>17:47</td><td>Planned train (Carlisle → Nottingham)</td></tr>
+        <tr><td>18:51</td><td>19:49</td><td>2 h 7 min later, fully dark</td></tr>
+        <tr><td>20:35</td><td>21:37</td><td>Last train of the day</td></tr>
+      </tbody>
+    </table>
+    <p class="sub" style="margin-top:8px">The Station Inn is a few minutes' walk from the platform, by the B6255/B6479 road junction, and is the warm place to wait. Check its Sunday hours before relying on it. The platform has only a small shelter. Mobile signal at Ribblehead can be patchy, so screenshot this page or install it (it then works offline).</p>
+  </section>
+
+  <section class="card">
+    <h2>Walks from Ribblehead station (13:47 – 16:44)</h2>
+    <div class="walk">
+      <h3>A · Viaduct close-up and back <span class="chip">≈3 km · 1 h</span></h3>
+      <p>From the station go down to the road junction by the Station Inn, then take the wide gravel track north-west across the moor to the foot of the viaduct (24 arches, about 400 m long). Come back the same way. Flat and easy; the track can be muddy.</p>
+      <p class="sub">Safe whenever: you're never more than ≈20 min from the platform.</p>
+    </div>
+    <div class="walk">
+      <h3>B · Viaduct to Blea Moor signal box <span class="chip">≈6–7 km · 1 h 45 – 2 h</span></h3>
+      <p>As A, then continue on the path that runs beside the railway on its east side, north to Blea Moor signal box below the tunnel mouth. Turn around there and come back the same way. Gentle rise, rough in places, boggy after rain. Whernside fills the view on the left on the way out.</p>
+      <p class="sub">Turn around at the signal box by 15:30 at the latest (the page's "Leave by" tile works this out from GPS). That gets you back in the last daylight with a margin.</p>
+    </div>
+    <div class="walk">
+      <h3>Not today: Whernside</h3>
+      <p class="sub">The well-known circuits over Whernside or round Blea Moor are 13–17 km and take 4½–6 h. They don't fit between 13:47 and sunset at 16:35.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Tickets and practical notes</h2>
+    <ul>
+      <li><b>Ticket:</b> an Off-Peak Day Return Shipley ↔ Appleby (via Skipton), quoted at £29.50 for this date, ⅓ off with a railcard. Ribblehead is on the route, so getting off there on the way back should be a normal break of journey. Ask the conductor or ticket office to confirm before you get off.</li>
+      <li><b>Appleby wait (1 h 54 min):</b> the town centre is about 10 min walk downhill from the station: Boroughgate, St Lawrence's church, the River Eden bridge. Start back up the hill by 12:50.</li>
+      <li><b>Seats:</b> going north, a seat on the left is often recommended for views down Dentdale. On the way back the Appleby–Ribblehead section is in daylight too.</li>
+      <li><b>Weather:</b> one model forecast (TheWeatherOutlook) gives about 9 °C, light wind (gusts ~17 mph), no rain, 94 % humidity under high pressure. That means a dry day but possibly low cloud or mist on the tops. Ribblehead is at about 300 m, so it will feel colder than Shipley. Take a hat, gloves, waterproof and a <b>torch</b>: the 16:44 leaves after sunset.</li>
+      <li><b>Sunday trains in the North West:</b> Northern has been cutting some Sunday trains because conductors are short. Check the live boards below on the morning, and again at Appleby before 13:07.</li>
+    </ul>
+    <div class="row" style="margin-top:10px">
+      <a class="btn" href="https://traintimes.org.uk/live/SHY/APP" target="_blank" rel="noopener">Live: Shipley → Appleby</a>
+      <a class="btn" href="https://traintimes.org.uk/live/APP/RHD" target="_blank" rel="noopener">Live: Appleby → Ribblehead</a>
+      <a class="btn" href="https://traintimes.org.uk/live/RHD/SHY" target="_blank" rel="noopener">Live: Ribblehead → Shipley</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Settings</h2>
+    <div class="row">
+      <button class="btn" data-theme-set="auto">Auto</button>
+      <button class="btn" data-theme-set="light">Light</button>
+      <button class="btn" data-theme-set="dark">Dark</button>
+      <button class="btn" id="wakeBtn">Keep screen on</button>
+    </div>
+  </section>
+
+  <p class="foot">Times: traintimes.org.uk journey search for Sun 1 Nov 2026 (national timetable data, checked 31 Oct), matching the Settle–Carlisle Railway timetable for 17 May – 12 Dec 2026 to within a minute. Sun times are calculated for Ribblehead. Plans can change at short notice: always check live times. Walk distances are approximate, so carry OS Explorer OL2 or a map app.</p>
+</main>
+
+<script>
+"use strict";
+// ---- plan data: every time is a "HH:MM" on PLAN_DATE, UK local time ----------------------------
+const PLAN_DATE = "2026-11-01";
+const STATION = { name: "Ribblehead station", lat: 54.2058, lon: -2.3607 };
+const BUFFER_MIN = 10;          // be on the platform this long before the train
+const DETOUR = 1.35;            // straight line → path distance
+const SUNSET = "16:35", DUSK = "17:13";
+const LEGS = [
+  { kind: "train", dep: "09:22", arr: "11:13", from: "Shipley", to: "Appleby", what: "Northern, Leeds → Carlisle",
+    calls: "Bingley 09:29 · Keighley 09:36 · Skipton 09:52 · Gargrave 09:59 · Hellifield 10:08 · Settle 10:17 · Horton-in-Ribblesdale 10:25 · Ribblehead 10:33 · Dent 10:43 · Garsdale 10:48 · Kirkby Stephen 11:01 · Appleby 11:13" },
+  { kind: "wait", dep: "11:13", arr: "13:07", from: "Appleby", to: "Appleby", what: "1 h 54 min in Appleby: walk into town, back up to the station by 13:00" },
+  { kind: "train", dep: "13:07", arr: "13:47", from: "Appleby", to: "Ribblehead", what: "Northern, Carlisle → Leeds (get off at Ribblehead)",
+    calls: "Kirkby Stephen 13:20 · Garsdale 13:33 · Dent 13:38 · Ribblehead 13:47" },
+  { kind: "walk", dep: "13:47", arr: "16:44", from: "Ribblehead", to: "Ribblehead", what: "2 h 57 min on foot. Daylight until 16:35, so be back on the platform by 16:34" },
+  { kind: "train", dep: "16:44", arr: "17:47", from: "Ribblehead", to: "Shipley", what: "Northern, Carlisle → Nottingham",
+    calls: "Horton-in-Ribblesdale 16:51 · Settle 17:00 · Hellifield 17:10 · Skipton 17:24 · Keighley 17:37 · Bingley 17:42 · Shipley 17:47" },
+];
+const FALLBACK = [{ dep: "18:51", arr: "19:49" }, { dep: "20:35", arr: "21:37" }];
+
+// ---- state ----------------------------------------------------------------------------------
+const KEY = "ribblehead-day-v1";
+let S = { speed: 4, theme: "auto" };
+try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+let fix = null;   // {lat, lon, acc, t}
+
+// ---- time helpers ---------------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// Minutes since midnight. On any other date, the countdowns run as a rehearsal on today's clock.
+const toMin = hhmm => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+const fmtMin = m => { m = Math.round(m); return `${pad(Math.floor(((m % 1440) + 1440) % 1440 / 60))}:${pad(((m % 60) + 60) % 60)}`; };
+const fmtDur = m => { m = Math.max(0, Math.round(m)); return m >= 60 ? `${Math.floor(m / 60)} h ${pad(m % 60)} min` : `${m} min`; };
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; };
+
+// ---- geometry -------------------------------------------------------------------------------
+function distM(a, b) {
+  const R = 6371000, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function bearing(a, b) {
+  const r = Math.PI / 180, y = Math.sin((b.lon - a.lon) * r) * Math.cos(b.lat * r);
+  const x = Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos((b.lon - a.lon) * r);
+  return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(((Math.atan2(y, x) / r + 360) % 360) / 45) % 8];
+}
+// Walking minutes back to the platform from the latest fix (null when no fix or the fix is stale)
+function walkBackMin() {
+  if (!fix || Date.now() - fix.t > 5 * 60000) return null;
+  return distM(fix, STATION) * DETOUR / (S.speed * 1000 / 60);
+}
+
+// ---- rendering ------------------------------------------------------------------------------
+function renderLegs(now) {
+  $("legs").innerHTML = LEGS.map((l, i) => {
+    const d = toMin(l.dep), a = toMin(l.arr);
+    const cls = now >= a ? "past" : now >= d ? "now" : "";
+    const label = l.kind === "train" ? `${l.from} → ${l.to}` : l.kind === "wait" ? "Wait at Appleby" : "Walk at Ribblehead";
+    return `<div class="leg ${cls}"><div class="t">${l.dep}<br><span class="sub">${l.arr}</span></div>
+      <div><div class="kind">${l.kind === "train" ? "Train" : l.kind === "wait" ? "Break" : "Walk"}</div>
+      <b>${label}</b><div class="sub">${l.what}</div>
+      ${l.calls ? `<details><summary>Calling points</summary><div class="calls">${l.calls}</div></details>` : ""}</div></div>`;
+  }).join("");
+}
+
+function alert(cls, text) { return `<div class="alert ${cls}">${text}</div>`; }
+
+function render() {
+  const now = nowMin(), today = ymd(new Date());
+  $("tNow").textContent = fmtMin(now);
+  $("tNowS").textContent = today === PLAN_DATE ? "Plan day" : "Rehearsal: not the plan day";
+  $("dateNote").innerHTML = today === PLAN_DATE ? "" :
+    alert("warn", `This plan is for Sunday 1 November 2026. Today is ${today}, so the countdowns below run on today's clock as a rehearsal. Sunday times don't apply on other days.`);
+  renderLegs(now);
+
+  // walk-back tiles
+  const wb = walkBackMin(), homeDep = toMin("16:44");
+  if (wb === null) {
+    $("tDist").textContent = "–"; $("tDistS").textContent = fix ? "GPS fix is stale" : "Turn on GPS below";
+    $("tLeave").textContent = fmtMin(homeDep - BUFFER_MIN - 50); $("tLeaveS").textContent = "if at Blea Moor box (≈50 min back at 4 km/h)";
+  } else {
+    const d = distM(fix, STATION);
+    $("tDist").textContent = d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1)} km`;
+    $("tDistS").textContent = `${bearing(fix, STATION)} · ≈${fmtDur(wb)} on foot · ±${Math.round(fix.acc)} m`;
+    $("tLeave").textContent = fmtMin(homeDep - BUFFER_MIN - wb); $("tLeaveS").textContent = "for the 16:44, with 10 min spare";
+  }
+
+  // hero: what to do now
+  const A = [];
+  let head, big, how;
+  const L = LEGS.map(l => ({ ...l, d: toMin(l.dep), a: toMin(l.arr) }));
+  if (now < L[0].d) {
+    head = "Next: train from Shipley"; big = L[0].dep;
+    how = `09:22 Northern to Carlisle, get off at Appleby 11:13. Leaves in ${fmtDur(L[0].d - now)}. Buy an Off-Peak Day Return Shipley–Appleby.`;
+    if (L[0].d - now < 15) A.push(alert("warn", "Under 15 min: head to the platform now."));
+  } else if (now < L[0].a) {
+    head = "On the train north"; big = "11:13";
+    how = `Arrive Appleby in ${fmtDur(L[0].a - now)}. Ribblehead station at 10:33 (the viaduct is just after it), then Dent Head and Arten Gill viaducts and Garsdale.`;
+  } else if (now < L[2].d) {
+    const left = L[2].d - now;
+    head = "In Appleby: train back south"; big = "13:07";
+    how = `Train to Ribblehead leaves in ${fmtDur(left)}, from the southbound (Leeds) platform. Be back at the station by 13:00.`;
+    if (left < 25) A.push(alert(left < 12 ? "bad" : "warn", `${fmtDur(left)} to the 13:07. If you're in town, start walking up now: it's uphill and about 10–15 min.`));
+    A.push(alert("warn", "If the 13:07 doesn't run, the next one is 16:05 (Ribblehead 16:44, after sunset). Then skip the walk and stay on to Shipley (17:47)."));
+  } else if (now < L[2].a) {
+    head = "On the train to Ribblehead"; big = "13:47";
+    how = "Get off at Ribblehead, the stop after Dent, just after crossing the viaduct.";
+  } else if (now < homeDep) {
+    const left = homeDep - now, sunsetIn = toMin(SUNSET) - now;
+    head = "Walking: train home from Ribblehead"; big = "16:44";
+    how = `Leaves in ${fmtDur(left)}. Sunset in ${sunsetIn > 0 ? fmtDur(sunsetIn) : "– already set"}.`;
+    if (wb !== null) {
+      const slack = left - BUFFER_MIN - wb;
+      if (slack < 0) A.push(alert("bad", `Turn back now: about ${fmtDur(wb)} back on foot and only ${fmtDur(left)} to the train. Next train after that: 18:51.`));
+      else if (slack < 20) A.push(alert("warn", `Start back within ${fmtDur(slack)}: about ${fmtDur(wb)} back to the platform.`));
+      else A.push(alert("good", `Plenty of time: ${fmtDur(slack)} before you need to turn back.`));
+    } else if (now > toMin("15:30")) A.push(alert("warn", "After 15:30: if you're beyond the viaduct, head back now."));
+    if (sunsetIn < 30 && sunsetIn > -40) A.push(alert("warn", "Light is going: get the torch out and stay on the main track."));
+  } else if (now < toMin("17:47")) {
+    head = "On the train home"; big = "17:47";
+    how = "Arrive Shipley 17:47 (Settle 17:00, Skipton 17:24).";
+  } else {
+    const nextFb = FALLBACK.find(f => toMin(f.dep) > now);
+    head = "Day over: or if you missed the 16:44"; big = nextFb ? nextFb.dep : "–";
+    how = nextFb ? `Next Ribblehead → Shipley: ${nextFb.dep}, arrives ${nextFb.arr}. Wait in the Station Inn rather than on the platform.`
+                 : "No more trains from Ribblehead today. The 20:35 was the last.";
+  }
+  $("heroHead").textContent = head; $("heroBig").textContent = big; $("heroHow").textContent = how;
+  $("heroAlerts").innerHTML = A.join("");
+}
+
+// ---- GPS ------------------------------------------------------------------------------------
+let watchId = null;
+$("gpsBtn").addEventListener("click", () => {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; $("gpsBtn").textContent = "Start GPS"; $("gpsStatus").textContent = "Off."; return; }
+  if (!navigator.geolocation) { $("gpsStatus").textContent = "This browser has no GPS access."; return; }
+  $("gpsStatus").textContent = "Waiting for a fix…";
+  watchId = navigator.geolocation.watchPosition(p => {
+    fix = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() };
+    $("gpsStatus").textContent = `Fix ±${Math.round(fix.acc)} m at ${fmtMin(nowMin())}`; render();
+  }, e => { $("gpsStatus").textContent = `GPS error: ${e.message}`; }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 });
+  $("gpsBtn").textContent = "Stop GPS";
+});
+document.querySelectorAll("[data-speed]").forEach(b => b.addEventListener("click", () => { S.speed = +b.dataset.speed; save(); marks(); render(); }));
+
+// ---- settings -------------------------------------------------------------------------------
+function applyTheme() { if (S.theme === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = S.theme; }
+function marks() {
+  document.querySelectorAll("[data-speed]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.speed === S.speed)));
+  document.querySelectorAll("[data-theme-set]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.themeSet === S.theme)));
+}
+document.querySelectorAll("[data-theme-set]").forEach(b => b.addEventListener("click", () => { S.theme = b.dataset.themeSet; save(); applyTheme(); marks(); }));
+let wake = null;
+$("wakeBtn").addEventListener("click", async () => {
+  if (wake) { wake.release(); wake = null; $("wakeBtn").setAttribute("aria-pressed", "false"); return; }
+  try { wake = await navigator.wakeLock.request("screen"); $("wakeBtn").setAttribute("aria-pressed", "true");
+        wake.addEventListener("release", () => { wake = null; $("wakeBtn").setAttribute("aria-pressed", "false"); }); }
+  catch (e) { $("wakeBtn").textContent = "Screen lock not available"; }
+});
+
+applyTheme(); marks(); render();
+setInterval(render, 15000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
