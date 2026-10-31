@@ -142,6 +142,11 @@ a{color:var(--me)}
     </section>
 
     <section class="card">
+      <h2 id="lunchH">Lunch</h2>
+      <div id="lunch"></div>
+    </section>
+
+    <section class="card">
       <h2>Is Appleby worth it, or more stops?</h2>
       <p><b>Appleby is mostly worth it as the turning point.</b> Going that far is what gets you the best northern part of the line in daylight: Garsdale, then Ais Gill summit (the highest point of the line), then down the Mallerstang and Eden valleys. The town itself is pleasant for 1–2 hours but isn't a destination on its own.</p>
       <p><b>More stops cost a lot of time.</b> On Sundays trains run only every 2–3 hours each way, so every extra stop costs that long. With sunset at 16:35, the most you can fit is about three stops, and then each one is short or has a fixed length.</p>
@@ -252,7 +257,7 @@ a{color:var(--me)}
     <div class="card">
       <h2>Ribblehead practicalities</h2>
       <ul>
-        <li>The Station Inn is a few minutes' walk from the platform, at the B6255/B6479 road junction. It's the warm place to wait if you miss a train; check its Sunday hours.</li>
+        <li><b>Lunch at the Station Inn</b> (a few minutes from the platform, at the B6255/B6479 junction). It's listed as open Sundays 10:00–22:00 with food 12:00–20:30. The Sunday roast comes from the specials board, and it has advertised a £10 roast this year; not confirmed for this Sunday. A pub main plus a drink is about £20. Phone 015242 41274. It's also the warm place to wait if you miss a train.</li>
         <li>The platform has only a small shelter, and mobile signal can be patchy. This page works offline once it's been opened online.</li>
         <li>It's about 300 m up: colder and windier than Shipley. Bring a torch for any train after 16:30.</li>
       </ul>
@@ -266,6 +271,11 @@ a{color:var(--me)}
       <p class="sub">The station is on the edge of the town centre, about 5 min from the Market Place. Used in Plans C and D. <b id="seCount"></b></p>
       <p id="seWindow" class="sub"></p>
       <div id="seList"></div>
+      <h3 style="margin-top:12px">Eating in Settle</h3>
+      <ul>
+        <li><b>About £10:</b> Ye Olde Naked Man café and bakery, Market Place. Listed as open daily 8:00–17:00, with a light lunch menu. No prices online. 01729 823230.</li>
+        <li><b>About £10–20:</b> The Golden Lion, Duke Street. It advertises a menu at 1 course £12, 2 for £15, 3 for £18, served from midday daily. Its autumn menu has soup at £7.50 and mains at £16–18.50 (its £10.50 sandwiches are Monday–Saturday only).</li>
+      </ul>
       <p class="sub" style="margin-top:8px">1 November is the first Sunday, so the monthly artisan market (second Sundays) isn't on. Check Sunday hours for cafés and the Folly before relying on them.</p>
     </div>
   </section>
@@ -341,6 +351,25 @@ const PLANS = {
   D: { name: "Appleby, then Settle", short: "Rainy day", rides: [["n0922", "SHY", "APP"], ["s1307", "APP", "SET"], ["s1605", "SET", "SHY"]],
        pros: ["Ride the whole line in daylight both ways (Appleby–Settle 13:07–14:03)", "Two towns with cafés and indoor options, which is good in rain", "Nearly 3 h in Settle, with time for Castleberg Crag"],
        cons: ["No hill walk at Ribblehead", "You pass the viaduct only on the train"] },
+};
+// Lunch for each plan: where, when, and what about £10 or about £20 gets you
+const LUNCH = {
+  A: { when: "Appleby, about 11:45–12:30", tab: "appleby",
+       ten: "Eden River Café (Bridge Street) or Tufton Mews café: sandwich £9.25–11.95, soup £7.95.",
+       twenty: "Royal Oak Sunday menu, one course £17.25 (roast with Yorkshire pudding). Book for 12:00 on 017683 51463.",
+       note: "You have about 45 min, so order straight away. Take a snack for the walk: there's no food at Ribblehead unless you stop at the Station Inn instead of walking." },
+  B: { when: "Station Inn, Ribblehead, about 12:30–13:40 (after the walk)", tab: "ribblehead",
+       ten: "The Station Inn has advertised a £10 Sunday roast. It isn't confirmed for this Sunday, so ask; soup or a sandwich is the fallback.",
+       twenty: "A full Sunday roast or pub main plus a drink. Food is served from 12:00 on Sundays.",
+       note: "Walk first (10:35–12:30, Blea Moor and back), then eat, and be on the platform by 13:45 for the 13:51. For tea in Appleby later, Bojangles is open until 15:30." },
+  C: { when: "Settle café about 11:15, or the Station Inn at Ribblehead at about 13:50", tab: "settle",
+       ten: "Early lunch at Ye Olde Naked Man café, Market Place, Settle (listed as open daily 8:00–17:00). No prices online; expect about £8–12.",
+       twenty: "Eat at the Station Inn when you reach Ribblehead at 13:48 (food from 12:00): a Sunday roast or pub main plus a drink.",
+       note: "Settle pubs serve from midday, which is too late for the 12:13 train. If you eat at the Station Inn, keep the walk to the viaduct (about 1 h) so you're back for the 16:44." },
+  D: { when: "Appleby about 11:45–12:30, or a late lunch in Settle after 14:03", tab: "appleby",
+       ten: "Appleby: Eden River Café or Tufton Mews (as Plan A). Settle: Golden Lion, one course £12, served from midday.",
+       twenty: "Appleby: Royal Oak, one course £17.25. Or wait for Settle: Golden Lion, 2 courses £15 or 3 for £18.",
+       note: "You have nearly 3 h in Settle, so the relaxed choice is a light snack in Appleby and a proper lunch at the Golden Lion around 14:15." },
 };
 // Minutes before the train to start heading back to the platform, by station (town walks are uphill or longer)
 const BACK = { APP: 27, SET: 15, RHD: 25, GSD: 0, DNT: 10, HOR: 15, KSW: 40 };
@@ -469,6 +498,7 @@ function renderPlans() {
       <div class="sub">${st.map(x => x.kind === "ride" ? `${x.dep} ${ST[x.from]} → ${x.arr} ${ST[x.to]}` : `<i>${ST[x.st]} ${fmtDur(x.e - x.s)}</i>`).join(" · ")}</div>
       <div class="pc"><div><b>Good</b><ul>${P.pros.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>
       <div><b>Watch out</b><ul>${P.cons.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div></div>
+      <p class="sub"><b>Lunch:</b> ${esc(LUNCH[k].when)}.</p>
       <div class="row"><button class="btn ${k === S.plan ? "primary" : ""}" data-follow="${k}">${k === S.plan ? "Following this plan" : "Follow this plan"}</button>
       <span class="sub">Home ${last.arr}</span></div></div>`;
   }).join("");
@@ -487,6 +517,16 @@ document.addEventListener("click", e => {
   S.plan = b.dataset.plan || b.dataset.follow; save(); renderAll();
   if (b.dataset.follow) showTab("overview", true);
 });
+
+function renderLunch() {
+  const L = LUNCH[S.plan];
+  $("lunchH").textContent = `Lunch on Plan ${S.plan}`;
+  $("lunch").innerHTML = `<p><b>${esc(L.when)}</b></p>
+    <table><tbody><tr><th style="border-top:0">About £10</th><td style="border-top:0">${esc(L.ten)}</td></tr>
+    <tr><th>About £20</th><td>${esc(L.twenty)}</td></tr></tbody></table>
+    <p class="sub" style="margin-top:8px">${esc(L.note)}</p>
+    <a class="sub" href="#${L.tab}">More detail on the ${L.tab[0].toUpperCase() + L.tab.slice(1)} tab →</a>`;
+}
 
 function renderLegs(now) {
   $("legs").innerHTML = steps(S.plan).map(x => {
@@ -626,7 +666,7 @@ function render() {
   renderLegs(now); renderHero(now); renderRib(now);
 }
 function renderAll() {
-  renderPlanSeg(); renderPlans(); renderHop(); renderLinks();
+  renderPlanSeg(); renderPlans(); renderHop(); renderLinks(); renderLunch();
   renderTicks("app", "apList", "apCount"); renderTicks("set", "seList", "seCount");
   windowNote("APP", "apWindow"); windowNote("SET", "seWindow");
   render();
