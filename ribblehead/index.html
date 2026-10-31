@@ -54,7 +54,7 @@ ul{margin:0;padding-left:1.1rem} li{margin:3px 0}
 .alert.warn{background:color-mix(in srgb,var(--warn) 18%,var(--card));border:1px solid var(--warn)}
 .alert.bad{background:color-mix(in srgb,var(--bad) 18%,var(--card));border:1px solid var(--bad)}
 .alert.good{background:color-mix(in srgb,var(--good) 15%,var(--card));border:1px solid var(--good)}
-.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--chip);border-radius:11px;padding:4px}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;background:var(--chip);border-radius:11px;padding:4px}
 .seg button{border:1px solid transparent;background:transparent;color:var(--fg);font:inherit;font-size:.85rem;padding:7px 2px;border-radius:8px;cursor:pointer;line-height:1.2}
 .seg button small{display:block;color:var(--muted);font-size:.7rem}
 .seg button[aria-pressed="true"]{background:var(--card);border-color:var(--me);font-weight:650}
@@ -103,7 +103,6 @@ a{color:var(--me)}
     <button role="tab" data-tab="hop">Hop-off</button>
     <button role="tab" data-tab="appleby">Appleby</button>
     <button role="tab" data-tab="ribblehead">Ribblehead</button>
-    <button role="tab" data-tab="settle">Settle</button>
     <button role="tab" data-tab="info">Info</button>
   </div>
 </div>
@@ -147,18 +146,19 @@ a{color:var(--me)}
     </section>
 
     <section class="card">
-      <h2>Is Appleby worth it, or more stops?</h2>
+      <h2>Plan A or Plan B?</h2>
       <p><b>Appleby is mostly worth it as the turning point.</b> Going that far is what gets you the best northern part of the line in daylight: Garsdale, then Ais Gill summit (the highest point of the line), then down the Mallerstang and Eden valleys. The town itself is pleasant for 1–2 hours but isn't a destination on its own.</p>
-      <p><b>More stops cost a lot of time.</b> On Sundays trains run only every 2–3 hours each way, so every extra stop costs that long. With sunset at 16:35, the most you can fit is about three stops, and then each one is short or has a fixed length.</p>
-      <p><b>My pick is Plan A.</b> It has the most even balance of sights. Plan B is better if the morning is clear and you want a longer walk without racing sunset. C has the most stops but skips the summit section. D is for rain. All four get you back to Shipley at 17:48, and they're compared on the Plans tab.</p>
+      <p><b>My pick is now Plan B.</b> Plan A has two weak points that B avoids. First, everything in A depends on the 13:07 from Appleby. If that Sunday train is cancelled, the next one is 16:05, which reaches Ribblehead at 16:44, after sunset, and the walk is lost. Second, A's walk finishes at sunset with one train home; miss the 16:44 and you wait until 18:51 in the dark on an exposed moor. In B, a cancellation costs you Appleby, not the walk. Missing the 16:05 from Appleby is easy: the 16:45 and 18:10 follow, from a town with cafés.</p>
+      <p><b>What A does better:</b> you see the Appleby–Ribblehead stretch a second time on the way home in daylight. In B that ride home is in dusk, but you've already seen all of it going north. And if there's morning mist, A's afternoon walk is more likely to be clear.</p>
+      <p><b>You don't have to decide now.</b> Both plans start on the same 09:22 with the same ticket. Look out of the window around Horton (10:25). If you can see the hills and the viaduct, get off at Ribblehead at 10:33 (Plan B). If it's thick mist, stay on to Appleby (Plan A). Then tap the plan here.</p>
     </section>
   </section>
 
   <!-- ============ PLANS ============ -->
   <section class="panel" id="p-plans" role="tabpanel" hidden>
     <div class="card">
-      <h2>Four ways to do the day</h2>
-      <p class="sub">All start on the 09:22 from Shipley (the 11:28 is the only other morning train). All end on the same train home (Appleby 16:05, Settle 17:00, Ribblehead 16:44), arriving at Shipley at 17:48. Tap "Follow this plan" to drive the Overview tab.</p>
+      <h2>Two ways to do the day</h2>
+      <p class="sub">Both start on the 09:22 from Shipley (the 11:28 is the only other morning train). Both end on the same train home (Appleby 16:05, Ribblehead 16:44), arriving at Shipley at 17:48. Same ticket for both. Tap "Follow this plan" to drive the Overview tab.</p>
       <div id="planCards"></div>
     </div>
     <div class="card">
@@ -198,7 +198,7 @@ a{color:var(--me)}
       <p class="sub" style="margin-top:8px">The walk back up to the station is uphill and takes about 15 min. Opening times come from the places' own websites and guides, not confirmed for this Sunday.</p>
     </div>
     <div class="card">
-      <h2>Lunch in Appleby (Plans A and D: eat about 11:45–12:30)</h2>
+      <h2>Food in Appleby (Plan A: lunch about 11:45–12:30 · Plan B: tea about 14:45, Bojangles closes 15:30)</h2>
       <p class="sub">You have about 45 min to eat, so order straight away and say you have a 13:07 train. Sunday roasts usually start at 12:00, so ring ahead if you want one.</p>
       <h3 style="margin-top:8px">About £10</h3>
       <table>
@@ -264,22 +264,6 @@ a{color:var(--me)}
     </div>
   </section>
 
-  <!-- ============ SETTLE ============ -->
-  <section class="panel" id="p-settle" role="tabpanel" hidden>
-    <div class="card">
-      <h2>Settle: things to tick off</h2>
-      <p class="sub">The station is on the edge of the town centre, about 5 min from the Market Place. Used in Plans C and D. <b id="seCount"></b></p>
-      <p id="seWindow" class="sub"></p>
-      <div id="seList"></div>
-      <h3 style="margin-top:12px">Eating in Settle</h3>
-      <ul>
-        <li><b>About £10:</b> Ye Olde Naked Man café and bakery, Market Place. Listed as open daily 8:00–17:00, with a light lunch menu. No prices online. 01729 823230.</li>
-        <li><b>About £10–20:</b> The Golden Lion, Duke Street. It advertises a menu at 1 course £12, 2 for £15, 3 for £18, served from midday daily. Its autumn menu has soup at £7.50 and mains at £16–18.50 (its £10.50 sandwiches are Monday–Saturday only).</li>
-      </ul>
-      <p class="sub" style="margin-top:8px">1 November is the first Sunday, so the monthly artisan market (second Sundays) isn't on. Check Sunday hours for cafés and the Folly before relying on them.</p>
-    </div>
-  </section>
-
   <!-- ============ INFO ============ -->
   <section class="panel" id="p-info" role="tabpanel" hidden>
     <div class="card">
@@ -290,7 +274,7 @@ a{color:var(--me)}
       <h2>Check before you go</h2>
       <ul>
         <li><b>Sunday cancellations:</b> since December 2024 Northern has run fewer Sunday trains in the North West because it's short of conductors. Check the live boards on the morning, and before each stop.</li>
-        <li><b>Weather:</b> one model forecast (TheWeatherOutlook) says about 9 °C, light wind (gusts ~17 mph), dry, 94 % humidity under high pressure. That usually means dry but possibly misty or low cloud, often worst in the morning, which is a point in favour of Plan A's afternoon walk. Take a hat, gloves, waterproof and a torch.</li>
+        <li><b>Weather:</b> one model forecast (TheWeatherOutlook) says about 9 °C, light wind (gusts ~17 mph), dry, 94 % humidity under high pressure. That usually means dry but possibly misty or low cloud, often worst in the morning, so look out of the window at Horton before choosing between Plan A and B (see Overview). Take a hat, gloves, waterproof and a torch.</li>
         <li><b>Seats:</b> going north, sitting on the left is the usual tip for views down Dentdale.</li>
       </ul>
       <div class="row" style="margin-top:10px" id="liveLinks"></div>
@@ -337,20 +321,14 @@ const callsBetween = (id, a, b) => {
   return o.slice(i + 1, j + 1).filter(s => at(id, s)).map(s => `${ST[s]} ${at(id, s)}`).join(" · ");
 };
 
-// ================= the four plans =================
+// ================= the two plans =================
 const PLANS = {
-  A: { name: "Appleby first, walk last", short: "My pick", rides: [["n0922", "SHY", "APP"], ["s1307", "APP", "RHD"], ["s1605", "RHD", "SHY"]],
+  A: { name: "Appleby first, walk last", short: "If misty", rides: [["n0922", "SHY", "APP"], ["s1307", "APP", "RHD"], ["s1605", "RHD", "SHY"]],
        pros: ["You see the whole line north in daylight, and the best stretch (Appleby–Ribblehead) again on the way back", "Walk in the afternoon, when morning mist has had time to clear", "Appleby wait is a relaxed 1 h 53 min"],
-       cons: ["The walk ends at sunset, so the 16:44 is a hard deadline", "If the 16:44 is missed, the next train is 18:51"] },
-  B: { name: "Walk first, Appleby last", short: "Longest walk", rides: [["n0922", "SHY", "RHD"], ["n1245", "RHD", "APP"], ["s1605", "APP", "SHY"]],
-       pros: ["3 h 18 min at Ribblehead in full daylight, with no sunset race", "More trains home from Appleby: 16:05, 16:45 (fast) and 18:10", "You still see the whole line north, half before the walk and half after"],
-       cons: ["The ride home leaves Appleby at 16:05, so most of it is in dusk or dark", "If there's morning mist, you'd walk in it", "Shorter time in Appleby (1 h 33 min)"] },
-  C: { name: "Three stops: Settle, Garsdale, Ribblehead", short: "Most stops", rides: [["n0922", "SHY", "SET"], ["n1128", "SET", "GSD"], ["s1307", "GSD", "RHD"], ["s1605", "RHD", "SHY"]],
-       pros: ["A market town, the Ruswarp dog statue at Garsdale and the viaduct walk", "Same 2 h 56 min walk as Plan A"],
-       cons: ["Skips the line north of Garsdale: Ais Gill summit, Mallerstang and the Eden valley", "The Garsdale stop is 49 min on a remote moorland platform with nothing else there", "No Appleby"] },
-  D: { name: "Appleby, then Settle", short: "Rainy day", rides: [["n0922", "SHY", "APP"], ["s1307", "APP", "SET"], ["s1605", "SET", "SHY"]],
-       pros: ["Ride the whole line in daylight both ways (Appleby–Settle 13:07–14:03)", "Two towns with cafés and indoor options, which is good in rain", "Nearly 3 h in Settle, with time for Castleberg Crag"],
-       cons: ["No hill walk at Ribblehead", "You pass the viaduct only on the train"] },
+       cons: ["Everything hangs on the 13:07 from Appleby: if it's cancelled, the next reaches Ribblehead at 16:44 and the walk is lost", "The walk ends at sunset, so the 16:44 is a hard deadline", "If the 16:44 is missed, the next train is 18:51, in the dark on the moor"] },
+  B: { name: "Walk first, Appleby last", short: "My pick", rides: [["n0922", "SHY", "RHD"], ["n1245", "RHD", "APP"], ["s1605", "APP", "SHY"]],
+       pros: ["3 h 18 min at Ribblehead in full daylight, with no sunset race", "A cancelled train costs you Appleby, not the walk (the 13:48 or 16:44 from Ribblehead goes home)", "More trains home from Appleby: 16:05, 16:45 (fast) and 18:10", "You still see the whole line north, half before the walk and half after"],
+       cons: ["The ride home leaves Appleby at 16:05, so most of it is in dusk or dark", "If there's morning mist you'd walk in it, so decide at Horton (10:25) by looking out of the window", "Shorter time in Appleby (1 h 33 min)"] },
 };
 // Lunch for each plan: where, when, and what about £10 or about £20 gets you
 const LUNCH = {
@@ -362,14 +340,6 @@ const LUNCH = {
        ten: "The Station Inn has advertised a £10 Sunday roast. It isn't confirmed for this Sunday, so ask; soup or a sandwich is the fallback.",
        twenty: "A full Sunday roast or pub main plus a drink. Food is served from 12:00 on Sundays.",
        note: "Walk first (10:35–12:30, Blea Moor and back), then eat, and be on the platform by 13:45 for the 13:51. For tea in Appleby later, Bojangles is open until 15:30." },
-  C: { when: "Settle café about 11:15, or the Station Inn at Ribblehead at about 13:50", tab: "settle",
-       ten: "Early lunch at Ye Olde Naked Man café, Market Place, Settle (listed as open daily 8:00–17:00). No prices online; expect about £8–12.",
-       twenty: "Eat at the Station Inn when you reach Ribblehead at 13:48 (food from 12:00): a Sunday roast or pub main plus a drink.",
-       note: "Settle pubs serve from midday, which is too late for the 12:13 train. If you eat at the Station Inn, keep the walk to the viaduct (about 1 h) so you're back for the 16:44." },
-  D: { when: "Appleby about 11:45–12:30, or a late lunch in Settle after 14:03", tab: "appleby",
-       ten: "Appleby: Eden River Café or Tufton Mews (as Plan A). Settle: Golden Lion, one course £12, served from midday.",
-       twenty: "Appleby: Royal Oak, one course £17.25. Or wait for Settle: Golden Lion, 2 courses £15 or 3 for £18.",
-       note: "You have nearly 3 h in Settle, so the relaxed choice is a light snack in Appleby and a proper lunch at the Golden Lion around 14:15." },
 };
 // Minutes before the train to start heading back to the platform, by station (town walks are uphill or longer)
 const BACK = { APP: 27, SET: 15, RHD: 25, GSD: 0, DNT: 10, HOR: 15, KSW: 40 };
@@ -395,7 +365,7 @@ function nextAny(st, m, dir) {
 
 // ================= station notes =================
 const WHAT = {
-  SET: "Market town right by the station: Market Place and the Shambles, the Folly museum, and Castleberg Crag (a 15 min climb for the view). See the Settle tab.",
+  SET: "Market town right by the station: Market Place and the Shambles, the Folly museum, and Castleberg Crag (a 15 min climb for the view).",
   HOR: "Village at the foot of Pen-y-ghent. Going up and back is about 10 km and 3–4 h, which only fits the 10:25 → 13:55 gap, for fast walkers on a clear day. There's a café and pubs in the village.",
   RHD: "Ribblehead Viaduct and the Station Inn. Walks of 1–2 h are on the Ribblehead tab.",
   DNT: "England's highest main-line station, at about 350 m. Dent village is about 6.5 km away down a steep road, too far to go there and back between trains. Good views over Dentdale from the lane.",
@@ -419,21 +389,13 @@ const TICKS = {
     ["coffee", "Lunch", "See the lunch options below, at about £10 or £20 each. Order as soon as you sit down."],
     ["riverside", "Riverside path by The Sands", "A flat path along the Eden by the bridge, for any last spare minutes."],
   ],
-  set: [
-    ["station", "Settle station", "Restored 1876 Midland station, with the old water tower (now a home) and a signal box by the platform."],
-    ["market", "Market Place and the Shambles", "The old arcaded Shambles building with shops on two levels. The market charter dates from 1249."],
-    ["folly", "The Folly (1679)", "Grade I listed house with the Museum of North Craven Life and a café. Check whether it's open on a November Sunday before going."],
-    ["crag", "Castleberg Crag viewpoint", "Limestone crag above the town, free to visit, up Castleberg Lane from the Market Place. About 15 min up. Once a giant sundial and later a Victorian pleasure ground; views over Settle and Ribblesdale."],
-    ["river", "Riverside walk and Settle Hydro", "Along the Ribble to Bridge End Mill, home of the community-owned hydro scheme."],
-    ["cafe", "A café", "Several independent cafés around the Market Place; check Sunday hours."],
-  ],
 };
 
 // ================= state =================
 const KEY = "ribblehead-day-v1";
-let S = { speed: 4, theme: "auto", ticks: {}, plan: "A", tab: "overview", hop: "RHD" };
+let S = { speed: 4, theme: "auto", ticks: {}, plan: "B", tab: "overview", hop: "RHD" };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
-if (!PLANS[S.plan]) S.plan = "A";
+if (!PLANS[S.plan]) S.plan = "B";
 // v1 saved Appleby ticks without a prefix
 for (const k of Object.keys(S.ticks)) if (!k.includes(":")) { S.ticks["app:" + k] = S.ticks[k]; delete S.ticks[k]; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
@@ -494,7 +456,7 @@ function renderPlanSeg() {
 function renderPlans() {
   $("planCards").innerHTML = Object.entries(PLANS).map(([k, P]) => {
     const st = steps(k), last = st[st.length - 1];
-    return `<div class="plan"><h3>Plan ${k} · ${esc(P.name)} ${k === "A" ? '<span class="chip good">my pick</span>' : ""}</h3>
+    return `<div class="plan"><h3>Plan ${k} · ${esc(P.name)} ${k === "B" ? '<span class="chip good">my pick</span>' : ""}</h3>
       <div class="sub">${st.map(x => x.kind === "ride" ? `${x.dep} ${ST[x.from]} → ${x.arr} ${ST[x.to]}` : `<i>${ST[x.st]} ${fmtDur(x.e - x.s)}</i>`).join(" · ")}</div>
       <div class="pc"><div><b>Good</b><ul>${P.pros.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>
       <div><b>Watch out</b><ul>${P.cons.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div></div>
@@ -505,8 +467,9 @@ function renderPlans() {
   const rows = [
     ["Stops", k => stopsSummary(k)],
     ["Time walking at Ribblehead", k => { const s = stopOf(k, "RHD"); return s ? fmtDur(s.e - s.s) : "–"; }],
-    ["Line seen in daylight", k => ({ A: "All of it going north; Appleby → Ribblehead coming back", B: "All of it going north (in two halves)", C: "Shipley → Garsdale only", D: "All of it, both ways, as far as Settle" })[k]],
-    ["Walk ends at sunset?", k => ({ A: "Yes: the 16:44 is 9 min after sunset", B: "No: the walk ends at 13:51", C: "Yes, as Plan A", D: "No walk" })[k]],
+    ["Line seen in daylight", k => ({ A: "All of it going north; Appleby → Ribblehead coming back", B: "All of it going north (in two halves); the ride home is in dusk" })[k]],
+    ["Walk ends at sunset?", k => ({ A: "Yes: the 16:44 is 9 min after sunset", B: "No: the walk ends at 13:51" })[k]],
+    ["If a train is cancelled", k => ({ A: "The 13:07 from Appleby: you lose the walk. The 16:44 from Ribblehead: you wait until 18:51", B: "The 13:51 to Appleby: walk on and go home 16:44. The 16:05 from Appleby: take the 16:45 or 18:10" })[k]],
     ["Home", k => { const st = steps(k); return `${st[st.length - 1].arr} Shipley`; }],
   ];
   $("cmp").innerHTML = `<thead><tr><th></th>${Object.keys(PLANS).map(k => `<th>Plan ${k}</th>`).join("")}</tr></thead><tbody>` +
@@ -534,7 +497,7 @@ function renderLegs(now) {
     if (x.kind === "ride") return `<div class="leg ${cls}"><div class="t">${x.dep}<br><span class="sub">${x.arr}</span></div>
       <div><div class="kind">Train</div><b>${ST[x.from]} → ${ST[x.to]}</b><div class="sub">Northern, ${esc(TRAINS[x.id].label)}</div>
       <details><summary>Calling points</summary><div class="calls">${callsBetween(x.id, x.from, x.to)}</div></details></div></div>`;
-    const tab = { APP: "appleby", RHD: "ribblehead", SET: "settle" }[x.st];
+    const tab = { APP: "appleby", RHD: "ribblehead" }[x.st];
     return `<div class="leg ${cls}"><div class="t">${x.from}<br><span class="sub">${x.until}</span></div>
       <div><div class="kind">Stop · ${fmtDur(x.e - x.s)}</div><b>${ST[x.st]}</b><div class="sub">${esc(WHAT[x.st] || "")}
       Be back on the platform by ${fmtMin(x.e - 5)}.</div>${tab ? `<a href="#${tab}" class="sub">Open the ${ST[x.st]} tab →</a>` : ""}</div></div>`;
@@ -624,7 +587,7 @@ function renderTicks(set, listId, countId) {
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-tick]"); if (!b) return;
   const k = b.dataset.tick; if (S.ticks[k]) delete S.ticks[k]; else S.ticks[k] = true;
-  save(); renderTicks("app", "apList", "apCount"); renderTicks("set", "seList", "seCount");
+  save(); renderTicks("app", "apList", "apCount");
   const again = document.querySelector(`[data-tick="${k}"]`); if (again) again.focus();
 });
 function windowNote(st, el) {
@@ -667,8 +630,8 @@ function render() {
 }
 function renderAll() {
   renderPlanSeg(); renderPlans(); renderHop(); renderLinks(); renderLunch();
-  renderTicks("app", "apList", "apCount"); renderTicks("set", "seList", "seCount");
-  windowNote("APP", "apWindow"); windowNote("SET", "seWindow");
+  renderTicks("app", "apList", "apCount");
+  windowNote("APP", "apWindow");
   render();
 }
 
