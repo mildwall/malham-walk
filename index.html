@@ -133,7 +133,22 @@ ol,ul{padding-left:1.2em;margin:.4em 0}
     </div>
   </div>
 
+  <div class="card row" id="walkConfirm" hidden style="justify-content:space-between">
+    <span id="walkAsk"></span>
+    <div class="row"><button class="btn primary" id="walkYes"></button><button class="btn" id="walkNo"></button></div>
+  </div>
+
   <div class="alerts" id="alerts"></div>
+
+  <section class="card hero" id="doneCard" aria-live="polite" hidden>
+    <h2>Walk finished</h2>
+    <div class="big" id="doneBig"></div>
+    <div class="how" id="doneHow"></div>
+    <div class="sub" id="doneStats"></div>
+    <div class="sub" id="doneWhen"></div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="doneGpx">Save my track as GPX</button></div>
+    <div class="small" id="doneMsg"></div>
+  </section>
 
   <section class="card hero buscard" id="busCard" aria-live="polite">
     <h2 id="busHead">Bus back</h2>
@@ -505,12 +520,14 @@ const fmtRef = (lat, lon) => CFG.gridRef === "osgb" ? osGrid(lat, lon) : `${lat.
 
 // ---- state ----------------------------------------------------------------
 const KEY = CFG.storageKey;   // file:// pages can share storage, so each page needs its own key
-let S = { route: CFG.routes[0].key, busPick: null, stops: [], anchor: null, stopsV: 0, stopPlan: 15, kMove: null, start: null, lastS: 0, track: [], speed: 4, useMine: true, base: "topo", theme: "auto", vibrate: true, wake: false, exag: 1.5 };
+let S = { route: CFG.routes[0].key, busPick: null, done: null, stops: [], anchor: null, stopsV: 0, stopPlan: 15, kMove: null, start: null, lastS: 0, track: [], speed: 4, useMine: true, base: "topo", theme: "auto", vibrate: true, wake: false, exag: 1.5 };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
 if (!ROUTES[S.route]) S.route = CFG.routes[0].key;
 // Saving every GPS fix wears the battery; write at most every 20 s, and always when the page is hidden.
 let savedAt = 0, saveTimer = null;
 const save = () => { clearTimeout(saveTimer); saveTimer = null; savedAt = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+// A finished walk stays on screen until the next one; it changes the bus card for the rest of that day.
+const finishedToday = () => !S.start && !!S.done && new Date(S.done.end).toDateString() === new Date().toDateString();
 const saveSoon = () => { if (Date.now() - savedAt > 20000) save(); else if (!saveTimer) saveTimer = setTimeout(save, 20000); };
 let fix = null;          // latest position {lat, lon, acc, t, x, y}
 let snapR = null;        // {s, i, f, off, x, y}
@@ -805,9 +822,9 @@ function busPlan(c, now) {
   if (!day) return { day: null, stale, rows: [], live: [], target: null, t0: now.getTime(), arrives: null };
   // Before the walk starts and away from the village, count from the bus that brings you here.
   const nearby = fix && Math.hypot(fix.x - CAR.xy[0], fix.y - CAR.xy[1]) < 3000;
-  const onWalk = !!(S.start && snapR);
+  const onWalk = !!(S.start && snapR), finished = finishedToday();
   let t0 = now.getTime(), arrives = null;
-  if (!onWalk && !nearby) {
+  if (!onWalk && !nearby && !finished) {
     const a = day.arr.map(x => hmDate(x, now).getTime()).find(x => x >= t0);
     if (a) { t0 = a; arrives = new Date(a); }
   }
@@ -819,8 +836,8 @@ function busPlan(c, now) {
   const live = rows.filter(r => !r.gone), picked = live.find(r => r.t === S.busPick) || null;
   // A bus you chose stays the target. Otherwise take the first bus you can still reach: walking
   // the whole route before you set off, or by heading back directly once you are out on it.
-  const target = picked || (onWalk ? live.find(r => r.reach >= 0) : live.find(r => r.spareLoop >= 0)) || live.find(r => r.reach >= 0) || live.at(-1) || null;
-  return { day, stale, rows, live, target, picked: !!picked, t0, arrives };
+  const target = picked || (finished ? live[0] : onWalk ? live.find(r => r.reach >= 0) : live.find(r => r.spareLoop >= 0)) || live.find(r => r.reach >= 0) || live.at(-1) || null;
+  return { day, stale, rows, live, target, picked: !!picked, t0, arrives, finished };
 }
 function renderBus(c) {
   const b = c.bus, A = [];
@@ -832,6 +849,11 @@ function renderBus(c) {
   else if (!t) {
     level = "bad"; big = "No more buses"; how = `The last bus to ${BUS.to} today was the ${b.day.dep.at(-1)}.`;
     A.push(["bad", `No more buses to ${BUS.to} today. ${BUS.taxi || "Ask at a pub in the village for a taxi."}`, "nobus"]);
+  } else if (b.finished) {
+    const wait = (t.dep - Date.now()) / 1000, early = t.deadline > Date.now();
+    $("busHead").textContent = `${t.t} ${b.day.label} to ${BUS.to}${later ? "" : " · last bus"}`;
+    level = early ? "good" : "warn"; big = wait < 60 ? "Due now" : "In " + fmtDur(wait);
+    how = early ? `Be at the stop by ${fmtClock(new Date(t.deadline))}.` : "Go to the stop now.";
   } else {
     const by = fmtClock(new Date(t.deadline)), latest = fmtClock(new Date(t.deadline - c.back * 1000)), lastBus = !later;
     $("busHead").textContent = `${t.t} ${b.day.label} to ${BUS.to}${lastBus ? " · last bus" : ""}`;
@@ -859,7 +881,7 @@ function renderBus(c) {
   $("busCard").className = "card hero buscard " + level;
   $("busBig").textContent = big; $("busHow").textContent = how; $("busTurn").textContent = turn;
   $("busOpts").innerHTML = b.rows.map(r => {
-    const sub = r.gone ? "gone" : r.spareLoop >= 0 ? fmtDur(r.spareLoop) + " spare" : r.spareWalk >= 0 ? "fewer stops" : r.spareBack >= 0 ? "if you cut short" : S.start && snapR && r.reach >= 0 ? "go now" : "too late";
+    const sub = r.gone ? "gone" : b.finished ? "in " + fmtDur((r.dep - Date.now()) / 1000) : r.spareLoop >= 0 ? fmtDur(r.spareLoop) + " spare" : r.spareWalk >= 0 ? "fewer stops" : r.spareBack >= 0 ? "if you cut short" : S.start && snapR && r.reach >= 0 ? "go now" : "too late";
     return `<button data-t="${r.t}" aria-pressed="${r === t}"${r.gone ? " disabled" : ""}>${r.t}<small>${sub}</small></button>`;
   }).join("");
   $("busNote").textContent = b.day ? `Stop: ${BUS.stop}. Aim to be there ${BUS.bufferMin} minutes early. From ${BUS.to}: ${b.day.from.join(", ")}. Tap a time to plan for that bus. ${BUS.taxi || ""}` : "";
@@ -910,11 +932,20 @@ $("views").onclick = e => {
 // ---- UI update -------------------------------------------------------------
 function updateUI() {
   const c = compute(), now = new Date(), sun = sunTimes(now, CFG.centre[0], CFG.centre[1]);
-  const started = !!S.start;
+  const started = !!S.start, done = finishedToday();
   c.bus = busPlan(c, now);
+  document.querySelector(".tiles").hidden = done; $("backTime").closest("section").hidden = done;
+  $("doneCard").hidden = started || !S.done;
+  if (S.done && !started) {
+    const d = S.done;
+    $("doneBig").textContent = fmtDur((d.end - d.start) / 1000);
+    $("doneHow").textContent = `${d.name} · ${fmtKm(d.dist)}`;
+    $("doneStats").textContent = `Walking ${fmtDur((d.end - d.start) / 1000 - d.stopped)} · ${d.count ? `${d.count} ${d.count > 1 ? "stops" : "stop"}, ${fmtDur(d.stopped)}` : "no stops"}`;
+    $("doneWhen").textContent = `${new Date(d.start).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} · ${fmtClock(new Date(d.start))} to ${fmtClock(new Date(d.end))}`;
+  }
   const busAlerts = renderBus(c);
   document.querySelectorAll(".routes button").forEach(b => b.setAttribute("aria-pressed", b.dataset.r === S.route));
-  $("routeSummary").innerHTML = started ? `<b>${c.route.name}</b>` : `<b>${c.route.name}.</b> ${c.route.desc}.`;
+  $("routeSummary").innerHTML = started || done ? `<b>${c.route.name}</b>` : `<b>${c.route.name}.</b> ${c.route.desc}.`;
   // hero
   $("backTime").textContent = snapR ? fmtDur(c.back) : "–";
   const atCar = fix && Math.hypot(fix.x - CAR.xy[0], fix.y - CAR.xy[1]) < 120 && (!started || c.pos.s < 200 || c.pos.s > c.total - 200);
@@ -955,17 +986,18 @@ function updateUI() {
   $("sunLeft").textContent = dl > 0 ? fmtDur(dl) : "Dark";
   $("sunS").textContent = `sunset ${fmtClock(sun.sunset)} · last light ${fmtClock(sun.dusk)}`;
   $("elapsed").textContent = started ? fmtDur(c.st.moving) : "Not started";
-  $("paceS").textContent = c.measured ? `your walking pace: ${c.measured.toFixed(2)}× book time` : (started ? "measuring your pace…" : `book time at ${S.speed.toFixed(1)} km/h`);
-  $("walkBtn").textContent = !started ? "Start walk" : snapR || !fix ? "Walking since " + fmtClock(new Date(S.start)) : "Starts on arrival";
+  $("paceS").textContent = (started ? `since ${fmtClock(new Date(S.start))} · ` : "") + (c.measured ? `your walking pace: ${c.measured.toFixed(2)}× book time` : (started ? "measuring your pace…" : `book time at ${S.speed.toFixed(1)} km/h`));
+  $("walkBtn").textContent = !started ? (S.done ? "New walk" : "Start walk") : snapR || !fix ? "Finish walk" : "Starts on arrival";
   // alerts
   const A = [];
   const backBy = new Date(Date.now() + c.back * 1000), finishBy = new Date(Date.now() + (c.ahead + c.stopsAhead) * 1000);
-  if (snapR && snapR.off > 60) {
+  if (snapR && snapR.off > 60 && !done) {
     const br = (Math.atan2(snapR.x - fix.x, fix.y - snapR.y) * 180 / Math.PI + 360) % 360;
     A.push(["bad", `You're ${Math.round(snapR.off)} m off the route. The path is to the ${compass(br)}.`, "off"]);
   }
   A.push(...busAlerts);
-  if (backBy > sun.dusk) A.push(["bad", `Getting back takes you past last light (${fmtClock(sun.dusk)}). Head down now and get your torch out.`, "dark"]);
+  if (done) { /* the route is walked: its sunset warnings no longer apply */ }
+  else if (backBy > sun.dusk) A.push(["bad", `Getting back takes you past last light (${fmtClock(sun.dusk)}). Head down now and get your torch out.`, "dark"]);
   else if (backBy > sun.sunset) A.push(["warn", `You'd get back after sunset (${fmtClock(sun.sunset)}). Head back soon.`]);
   else if (finishBy > sun.sunset) A.push(["warn", `Finishing the route takes you past sunset. Leave ${fmtDur((sun.sunset - backBy) / 1000)} spare or cut it short.`]);
   if (fix && fix.acc > 50) A.push(["warn", `GPS accuracy is poor (±${Math.round(fix.acc)} m). Times may jump.`]);
@@ -1416,13 +1448,47 @@ function startGPS() {
   $("gpsBtn").textContent = "Stop GPS";
 }
 $("gpsBtn").onclick = startGPS;
-$("walkBtn").onclick = () => {
-  if (S.start) return;
-  S.start = Date.now(); S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.stopsV = 2; S.kMove = null; save();
+function beginWalk() {
+  S.start = Date.now(); S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.stopsV = 2; S.kMove = null; S.done = null; save();
   if (watchId === null) startGPS();
   if (!in3d) { follow = true; $("follow").classList.add("on"); if (view.s < 0.4) view.s = 0.5; }
   updateUI();
+}
+function finishWalk() {
+  // The walk ends on arrival at the last spot near a mapped path: neither the bus home nor sitting at the end counts.
+  const tr = S.track, xy = q => toXY(q[0], q[1]), apart = (a, b) => Math.hypot(xy(a)[0] - xy(b)[0], xy(a)[1] - xy(b)[1]);
+  const onPath = q => { const [x, y] = xy(q); return Object.values(ROUTES).some(r => r.pts.some(w => Math.hypot(w.x - x, w.y - y) < 150)); };
+  let n = tr.length;
+  while (n && !onPath(tr[n - 1])) n--;
+  const spot = tr[n - 1];
+  while (n > 1 && apart(tr[n - 2], spot) < 60) n--;
+  tr.length = n;
+  if (n > 1) {
+    const end = tr[n - 1][2] * 1000, stops = S.stops.filter(q => q.t0 < end);
+    let dist = 0, a = tr[0];
+    for (const q of tr) {   // steps under 40 m are mostly GPS jitter
+      const d = apart(a, q);
+      if (d >= 40) { dist += d; a = q; }
+    }
+    S.done = { name: ROUTES[S.route].name, start: S.start, end, dist, count: stops.length, stopped: stops.reduce((x, q) => x + Math.min(q.dur, (end - q.t0) / 1000), 0) };
+  }
+  S.start = null; S.lastS = 0; S.stops = []; S.anchor = null; S.kMove = null; save();
+  if (watchId !== null) startGPS();   // stops it
+  if (S.wake) $("wakeBtn").click();
+  fix = null; snapR = null; follow = false; $("follow").classList.remove("on");
+  if (!in3d) fitRoute();
+  updateUI();
+}
+$("walkBtn").onclick = () => {
+  if (!S.start && !S.done) { beginWalk(); return; }
+  const walked = S.track.length > 1;
+  $("walkAsk").textContent = !S.start ? "Start a new walk? This replaces the finished one." : walked ? "Finish this walk?" : "Cancel this walk?";
+  $("walkYes").textContent = !S.start ? "New walk" : walked ? "Finish" : "Cancel walk";
+  $("walkNo").textContent = S.start ? "Keep walking" : "Not yet";
+  $("walkConfirm").hidden = false;
 };
+$("walkNo").onclick = () => { $("walkConfirm").hidden = true; };
+$("walkYes").onclick = () => { $("walkConfirm").hidden = true; if (S.start) finishWalk(); else beginWalk(); };
 
 // ---- controls ---------------------------------------------------------------
 function setRoute(r) {
@@ -1441,7 +1507,7 @@ $("stopPlan").oninput = e => { S.stopPlan = +e.target.value; $("stopPlanV").text
 $("useMine").checked = S.useMine; $("useMine").onchange = e => { S.useMine = e.target.checked; save(); updateUI(); };
 $("resetBtn").onclick = () => { $("resetConfirm").hidden = false; };
 $("resetNo").onclick = () => { $("resetConfirm").hidden = true; };
-$("resetYes").onclick = () => { S.start = null; S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.kMove = null; snapR = fix ? snap(ROUTES[S.route], fix.x, fix.y, 0) : null; save(); $("resetConfirm").hidden = true; updateUI(); };
+$("resetYes").onclick = () => { S.start = null; S.done = null; S.lastS = 0; S.track = []; S.stops = []; S.anchor = null; S.kMove = null; snapR = fix ? snap(ROUTES[S.route], fix.x, fix.y, 0) : null; save(); $("resetConfirm").hidden = true; updateUI(); };
 // The screen lock is dropped whenever the page is hidden, so ask again when it comes back.
 let wake = null;
 async function holdScreen() {
@@ -1494,10 +1560,11 @@ $("gpxRoute").onclick = () => {
 };
 $("gpxTrack").onclick = () => {
   if (S.track.length < 2) { $("gpxMsg").textContent = "No track yet. Tap Start walk and walk a little first."; return; }
-  saveFile(`malham-track-${new Date(S.start || Date.now()).toISOString().slice(0, 10)}.gpx`,
+  saveFile(`malham-track-${new Date(S.start || (S.done && S.done.start) || Date.now()).toISOString().slice(0, 10)}.gpx`,
     gpx("My walk", S.track.map(q => ({ lat: q[0], lon: q[1], ele: groundHeight(q[0], q[1]), time: new Date(q[2] * 1000).toISOString() }))));
   $("gpxMsg").textContent = `Track saved to your Downloads (${S.track.length} points).`;
 };
+$("doneGpx").onclick = () => { $("gpxTrack").click(); $("doneMsg").textContent = $("gpxMsg").textContent; };
 window.addEventListener("resize", () => { drawMap(); updateUI(); });
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", updateUI);
 
@@ -1510,6 +1577,7 @@ setInterval(() => { if (document.visibilityState === "visible") updateUI(); }, 3
 $("offlineInfo").textContent = `Stored inside this file: ${Object.keys(TILES).length} topo map tiles, the height map, 3D terrain and all ${Object.keys(ROUTES).length} routes. Only the satellite layer needs the internet.`;
 if (S.start && S.stopsV !== 2) { replayStops(); save(); }
 applyTheme(); fitRoute(); updateUI(); wakeLabel(); holdScreen();
+if (S.start && Date.now() - (S.track.length ? S.track.at(-1)[2] * 1000 : S.start) > 12 * 36e5) finishWalk();   // left running from another day
 if (S.start) startGPS();
 </script>
 <script>

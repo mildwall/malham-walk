@@ -1,5 +1,5 @@
 // Cache-first: the page works with no signal after one online visit. The version changes with every rebuild.
-const CACHE = "malham-walk-c253ec01ed";
+const CACHE = "malham-walk-3dc2b3c4fe";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
